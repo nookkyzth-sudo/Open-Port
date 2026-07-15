@@ -278,23 +278,23 @@ export default function Home() {
             </div>
 
             <div className="p-6">
-              <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="mb-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                 {pages.map(p => (
                   <div 
                     key={p.id} 
                     onClick={() => setActivePageId(p.id)} 
-                    className={`p-4 rounded-xl border cursor-pointer transition ${p.id === activePageId ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200' : 'border-slate-200 bg-white hover:border-indigo-300'}`}
+                    className={`p-3 rounded-xl border cursor-pointer transition ${p.id === activePageId ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200' : 'border-slate-200 bg-white hover:border-indigo-300'}`}
                   >
-                    <div className="flex justify-between items-center mb-2">
-                      <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                        <User className="w-4 h-4 text-indigo-500" />
-                        {p.user?.username || p.name}
+                    <div className="flex justify-between items-start sm:items-center flex-col sm:flex-row gap-1 mb-1.5">
+                      <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 truncate w-full">
+                        <User className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                        <span className="truncate">{p.user?.username || p.name}</span>
                       </h3>
                       {p.userId === currentUser?.userId && (
-                        <span className="text-[10px] font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">ของคุณ</span>
+                        <span className="text-[9px] font-bold bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full shrink-0">ของคุณ</span>
                       )}
                     </div>
-                    <p className="text-sm text-slate-500 font-medium">{p.devices.length} / 100 อุปกรณ์</p>
+                    <p className="text-xs text-slate-500 font-medium ml-5">{p.devices.length} / 100 อุปกรณ์</p>
                   </div>
                 ))}
               </div>
