@@ -336,45 +336,45 @@ export default function Home() {
                 </table>
               </div>
 
-              <div className="mt-6 flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center bg-slate-50 p-4 md:p-5 rounded-xl border border-slate-200">
+              <div className="mt-4 flex flex-wrap gap-3 justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-200">
                 {/* Left side: Table Management */}
-                <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+                <div className="flex flex-wrap gap-2">
                   {canEditActivePage && (
                     <>
-                      <button onClick={addDevice} className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 font-medium rounded-lg text-sm transition border border-slate-200 shadow-sm">
-                        <Plus className="w-4 h-4" /> เพิ่มรายการอุปกรณ์
+                      <button onClick={addDevice} className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 font-medium rounded-lg text-xs transition border border-slate-200 shadow-sm">
+                        <Plus className="w-3.5 h-3.5" /> เพิ่มอุปกรณ์
                       </button>
-                      <button onClick={handleSave} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg text-sm transition shadow-sm">
-                        <Save className="w-4 h-4" /> บันทึกข้อมูลไปยัง Database
+                      <button onClick={handleSave} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg text-xs transition shadow-sm">
+                        <Save className="w-3.5 h-3.5" /> บันทึก Database
                       </button>
                     </>
                   )}
                 </div>
 
                 {/* Right side: Scanning Actions */}
-                <div className="flex flex-wrap gap-3 items-center w-full lg:w-auto justify-start lg:justify-end pt-4 lg:pt-0 border-t lg:border-t-0 border-slate-200">
-                  <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-sm">
-                    <Timer className="w-4 h-4 text-slate-500" />
-                    <span className="text-sm font-semibold text-slate-700">สแกนอัตโนมัติ:</span>
+                <div className="flex flex-wrap gap-2 items-center">
+                  <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-lg border border-slate-200 shadow-sm">
+                    <Timer className="w-3.5 h-3.5 text-slate-500" />
+                    <span className="text-xs font-semibold text-slate-700">ออโต้สแกน:</span>
                     <select
                       value={config.scanInterval || 'off'}
                       onChange={(e) => setConfig({ ...config, scanInterval: e.target.value })}
-                      className="bg-slate-50 border border-slate-300 text-slate-700 text-sm rounded-md px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
+                      className="bg-slate-50 border border-slate-300 text-slate-700 text-xs rounded-md px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
                     >
-                      <option value="off">ปิด (Off)</option>
-                      <option value="1">ทุก 1 นาที</option>
-                      <option value="5">ทุก 5 นาที</option>
-                      <option value="10">ทุก 10 นาที</option>
-                      <option value="30">ทุก 30 นาที</option>
+                      <option value="off">ปิด</option>
+                      <option value="1">1 นาที</option>
+                      <option value="5">5 นาที</option>
+                      <option value="10">10 นาที</option>
+                      <option value="30">30 นาที</option>
                     </select>
                     {timeLeft !== null && (
-                      <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded border border-indigo-100 flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5" /> {formatTime(timeLeft)}
+                      <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 flex items-center gap-1">
+                        <Clock className="w-3 h-3" /> {formatTime(timeLeft)}
                       </span>
                     )}
                   </div>
-                  <button onClick={startScan} disabled={scanning} className={`flex items-center gap-2 px-6 py-2.5 font-bold rounded-lg text-sm transition shadow-md w-full sm:w-auto justify-center ${scanning ? 'bg-slate-400 cursor-not-allowed text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200'}`}>
-                    <PlayCircle className="w-5 h-5" /> {scanning ? 'กำลังสแกน...' : 'เริ่มสแกนพอร์ตทั้งหมด'}
+                  <button onClick={startScan} disabled={scanning} className={`flex items-center gap-1.5 px-4 py-1.5 font-bold rounded-lg text-xs transition shadow-md ${scanning ? 'bg-slate-400 cursor-not-allowed text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200'}`}>
+                    <PlayCircle className="w-4 h-4" /> {scanning ? 'กำลังสแกน...' : 'เริ่มสแกนทั้งหมด'}
                   </button>
                 </div>
               </div>
