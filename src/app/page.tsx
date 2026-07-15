@@ -438,11 +438,13 @@ export default function Home() {
                             if (!res) return <td key={i} className="px-6 py-4 text-center">-</td>
                             const isConnected = res.status === 'CONNECTED'
                             return (
-                              <td key={i} className="px-6 py-4 text-center">
-                                <span className="font-mono text-xs font-semibold block mb-1">Port: {res.port}</span>
-                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isConnected ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
-                                  {res.status}
-                                </span>
+                              <td key={i} className="px-6 py-4">
+                                <div className="flex items-center justify-center gap-2">
+                                  <span className="font-mono text-xs font-semibold whitespace-nowrap">Port: {res.port}</span>
+                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${isConnected ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+                                    {res.status}
+                                  </span>
+                                </div>
                               </td>
                             )
                           })}
