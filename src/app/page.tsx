@@ -100,10 +100,12 @@ export default function Home() {
       await saveAppData({ pages: pagesToSave, config: { ...config, activePageId } })
       setAlert({ type: 'success', message: 'บันทึกข้อมูลเรียบร้อยแล้ว' })
       setTimeout(() => setAlert(null), 3000)
-    } catch (err) {
-      setAlert({ type: 'error', message: 'เกิดข้อผิดพลาดในการบันทึกข้อมูล' })
+    } catch (err: any) {
+      const msg = err?.message || String(err)
+      setAlert({ type: 'error', message: `Error: ${msg}` })
     }
   }
+
 
   const handleDeviceChange = (pageId: string, devIndex: number, field: keyof Device, value: string) => {
     setPages(prev => prev.map(p => {
