@@ -7,7 +7,7 @@ import { getCurrentUser, logout } from './auth-actions'
 import Link from 'next/link'
 
 type Device = { name: string, host: string, ports: string }
-type Page = { id: string, name: string, userId?: string, user?: { username: string }, devices: Device[] }
+type Page = { id: string, name: string, userId?: string | null, user?: { username: string } | null, devices: Device[] }
 type Config = { activePageId: string | null, scanInterval: string | null }
 type ScanResult = { id: number, name: string, host: string, results: { port: number, status: string }[] }
 
