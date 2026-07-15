@@ -28,7 +28,7 @@ model Device {
   host        String
   ports       String
   order       Int      @default(0)
-  ipUpdatedAt DateTime @default(now())
+  ipUpdatedAt DateTime?
   
   pageId      String
   page        Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
