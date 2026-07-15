@@ -111,7 +111,7 @@ export async function saveAppData(data: any) {
           }
         }
       }
-    })
+    }, { timeout: 30000, maxWait: 5000 })
   } catch (err: any) {
     const msg = err?.message || String(err)
     console.error('SAVE ERROR:', msg)
