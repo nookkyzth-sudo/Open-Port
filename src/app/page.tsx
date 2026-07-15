@@ -151,6 +151,11 @@ export default function Home() {
       if (index < validDevices.length - 1) content += '\n'
     })
     
+    const d = new Date()
+    const dateStr = `${d.getDate()}/${d.getMonth() + 1}/${(d.getFullYear() + 543).toString().slice(-2)}`
+    if (content.length > 0) content += '\n'
+    content += `(True ไอพีจริง ค.กลางวัน + ค.กลางคืน วันที่ ${dateStr})`
+    
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
