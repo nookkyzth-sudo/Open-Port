@@ -332,7 +332,7 @@ export default function Home() {
                             />
                             {d.ipUpdatedAt && (
                               <span className="text-[10px] text-slate-500/80 italic px-1">
-                                อัปเดต: {new Date(d.ipUpdatedAt).toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: '2-digit' })} 
+                                อัปเดต: {new Date(d.ipUpdatedAt).toLocaleString('th-TH', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })} น.
                                 {' '}
                                 (ใช้มา {Math.floor((new Date().getTime() - new Date(d.ipUpdatedAt).getTime()) / (1000 * 60 * 60 * 24))} วัน)
                               </span>
