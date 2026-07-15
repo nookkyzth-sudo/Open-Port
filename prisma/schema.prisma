@@ -1,0 +1,32 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+}
+
+model Config {
+  id           String   @id @default("app-data")
+  activePageId String?
+  scanInterval String?
+  updatedAt    DateTime @updatedAt
+}
+
+model Page {
+  id      String   @id @default(cuid())
+  name    String
+  order   Int      @default(0)
+  devices Device[]
+}
+
+model Device {
+  id      String @id @default(cuid())
+  name    String
+  host    String
+  ports   String
+  order   Int    @default(0)
+  
+  pageId  String
+  page    Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
+}
