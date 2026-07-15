@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { ShieldAlert, Radio, Server, Database, Timer, Save, ListPlus, Info, PlusCircle, Clock, Plus, RotateCcw, PlayCircle, TableProperties, FileText, X, ChevronLeft, ChevronRight, Edit2, Trash2, AlertCircle, CheckCircle } from 'lucide-react'
+import { ShieldAlert, Radio, Server, Database, Timer, Save, ListPlus, Info, PlusCircle, Clock, Plus, RotateCcw, PlayCircle, TableProperties, FileText, X, ChevronLeft, ChevronRight, Edit2, Trash2, AlertCircle, CheckCircle, User, LogOut } from 'lucide-react'
 import { getAppData, saveAppData } from './actions'
+import { getCurrentUser, logout } from './auth-actions'
+import Link from 'next/link'
 
 type Device = { name: string, host: string, ports: string }
-type Page = { id: string, name: string, devices: Device[] }
+type Page = { id: string, name: string, userId?: string, user?: { username: string }, devices: Device[] }
 type Config = { activePageId: string | null, scanInterval: string | null }
 type ScanResult = { id: number, name: string, host: string, results: { port: number, status: string }[] }
 
@@ -14,6 +16,7 @@ export default function Home() {
   const [activePageId, setActivePageId] = useState<string | null>(null)
   const [config, setConfig] = useState<Config>({ activePageId: null, scanInterval: 'off' })
   const [isConnected, setIsConnected] = useState(false) // For API status
+  const [currentUser, setCurrentUser] = useState<any>(null)
   
   const [scanning, setScanning] = useState(false)
   const [scanResults, setScanResults] = useState<ScanResult[]>([])
@@ -22,22 +25,67 @@ export default function Home() {
   const [finishedCount, setFinishedCount] = useState(0)
   
   const [alert, setAlert] = useState<{ type: 'error'|'success'|'info', message: string } | null>(null)
+  
+  const [timeLeft, setTimeLeft] = useState<number | null>(null)
+  const timeLeftRef = useRef<number | null>(null)
+  const startScanRef = useRef<() => void>(() => {})
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60)
+    const s = seconds % 60
+    return `${m}:${s.toString().padStart(2, '0')}`
+  }
 
   useEffect(() => {
     loadData()
   }, [])
 
+  useEffect(() => {
+    startScanRef.current = startScan
+  }, [pages, activePageId]) // depend on state that startScan uses
+
+  useEffect(() => {
+    timeLeftRef.current = timeLeft
+  }, [timeLeft])
+
+  useEffect(() => {
+    if (config.scanInterval && config.scanInterval !== 'off') {
+      const minutes = parseInt(config.scanInterval)
+      if (!isNaN(minutes) && minutes > 0) {
+        setTimeLeft(minutes * 60)
+      } else {
+        setTimeLeft(null)
+      }
+    } else {
+      setTimeLeft(null)
+    }
+  }, [config.scanInterval])
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (timeLeftRef.current !== null && timeLeftRef.current > 0) {
+        setTimeLeft(prev => prev !== null ? prev - 1 : null)
+      } else if (timeLeftRef.current === 0) {
+        startScanRef.current()
+        const minutes = parseInt(config.scanInterval || 'off')
+        if (!isNaN(minutes) && minutes > 0) {
+          setTimeLeft(minutes * 60)
+        } else {
+          setTimeLeft(null)
+        }
+      }
+    }, 1000)
+    
+    return () => clearInterval(timer)
+  }, [config.scanInterval])
+
   const loadData = async () => {
     try {
-      const data = await getAppData()
-      if (data.pages.length === 0) {
-        const initialPage = { id: 'page-1', name: 'หน้า 1', devices: [{ name: '', host: '', ports: '' }] }
-        setPages([initialPage])
-        setActivePageId('page-1')
-      } else {
-        setPages(data.pages)
-        setActivePageId(data.config?.activePageId || data.pages[0].id)
-      }
+      const [data, user] = await Promise.all([getAppData(), getCurrentUser()])
+      setCurrentUser(user)
+      setPages(data.pages)
+      const myPage = user ? data.pages.find((p: Page) => p.userId === user.userId) : null
+      setActivePageId(myPage ? myPage.id : (data.pages[0]?.id || null))
       setIsConnected(true)
     } catch (err) {
       setIsConnected(false)
@@ -47,7 +95,9 @@ export default function Home() {
 
   const handleSave = async () => {
     try {
-      await saveAppData({ pages, config: { ...config, activePageId } })
+      const isSuperAdmin = currentUser?.username === 'nook.cctv'
+      const pagesToSave = pages.filter(p => isSuperAdmin ? true : p.userId === currentUser?.userId)
+      await saveAppData({ pages: pagesToSave, config: { ...config, activePageId } })
       setAlert({ type: 'success', message: 'บันทึกข้อมูลเรียบร้อยแล้ว' })
       setTimeout(() => setAlert(null), 3000)
     } catch (err) {
@@ -67,8 +117,8 @@ export default function Home() {
   const addDevice = () => {
     setPages(prev => prev.map(p => {
       if (p.id !== activePageId) return p
-      if (p.devices.length >= 50) {
-        setAlert({ type: 'error', message: 'จำกัดสูงสุด 50 อุปกรณ์ต่อหน้า' })
+      if (p.devices.length >= 100) {
+        setAlert({ type: 'error', message: 'จำกัดสูงสุด 100 อุปกรณ์ต่อผู้ใช้' })
         return p
       }
       return { ...p, devices: [...p.devices, { name: '', host: '', ports: '' }] }
@@ -84,19 +134,33 @@ export default function Home() {
     }))
   }
 
-  const addNewPage = () => {
-    const newPage = { id: `page-${Date.now()}`, name: `หน้า ${pages.length + 1}`, devices: [{ name: '', host: '', ports: '' }] }
-    setPages(prev => [...prev, newPage])
-    setActivePageId(newPage.id)
-  }
-
-  const removePage = (id: string) => {
-    if (pages.length <= 1) return setAlert({ type: 'error', message: 'ต้องมีอย่างน้อย 1 หน้า' })
-    setPages(prev => prev.filter(p => p.id !== id))
-    if (activePageId === id) setActivePageId(pages[0].id)
-  }
-
   const activePage = pages.find(p => p.id === activePageId)
+  const isSuperAdmin = currentUser?.username === 'nook.cctv'
+  const canEditActivePage = activePage?.userId === currentUser?.userId || isSuperAdmin
+
+  const exportToTxt = () => {
+    if (!activePage) return
+    let content = ''
+    const validDevices = activePage.devices.filter(d => d.name || d.host)
+    validDevices.forEach((dev, index) => {
+      const ports = dev.ports.split(',').map(p => p.trim())
+      const port1 = ports[0] || '-'
+      const port2 = ports[1] || '-'
+      content += `${dev.name || 'Unknown'}\n`
+      content += `${dev.host || 'Unknown'}\tPort1: ${port1} Port2: ${port2}\n`
+      if (index < validDevices.length - 1) content += '\n'
+    })
+    
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${activePage.user?.username || activePage.name}.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
 
   const startScan = async () => {
     if (!activePage) return
@@ -181,6 +245,16 @@ export default function Home() {
             <span className={`text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1 ${isConnected ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
               <Database className="w-3.5 h-3.5" /> {isConnected ? 'Database Connected' : 'Disconnected'}
             </span>
+            {currentUser && (
+              <>
+                <Link href="/profile" className="text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1 bg-slate-100 text-slate-700 hover:bg-slate-200 transition border border-slate-200">
+                  <User className="w-3.5 h-3.5" /> {currentUser.username}
+                </Link>
+                <button onClick={() => logout()} className="text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 transition border border-rose-100">
+                  <LogOut className="w-3.5 h-3.5" /> ออกจากระบบ
+                </button>
+              </>
+            )}
           </div>
         </header>
 
@@ -199,32 +273,30 @@ export default function Home() {
                 <h2 className="text-lg font-bold">กำหนดค่าอุปกรณ์และพอร์ตที่ต้องการสแกน</h2>
               </div>
               <span className="bg-indigo-600 text-white text-xs font-semibold px-2.5 py-1 rounded">
-                {activePage?.devices.length || 0} / 50 อุปกรณ์
+                {activePage?.devices.length || 0} / 100 อุปกรณ์
               </span>
             </div>
 
             <div className="p-6">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-wrap gap-2">
-                  {pages.map(p => (
-                    <div key={p.id} className="flex items-center gap-1">
-                      <button
-                        onClick={() => setActivePageId(p.id)}
-                        className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${p.id === activePageId ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
-                      >
-                        {p.name}
-                      </button>
-                      {pages.length > 1 && (
-                        <button onClick={() => removePage(p.id)} className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg">
-                          <X className="w-4 h-4" />
-                        </button>
+              <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {pages.map(p => (
+                  <div 
+                    key={p.id} 
+                    onClick={() => setActivePageId(p.id)} 
+                    className={`p-4 rounded-xl border cursor-pointer transition ${p.id === activePageId ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200' : 'border-slate-200 bg-white hover:border-indigo-300'}`}
+                  >
+                    <div className="flex justify-between items-center mb-2">
+                      <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                        <User className="w-4 h-4 text-indigo-500" />
+                        {p.user?.username || p.name}
+                      </h3>
+                      {p.userId === currentUser?.userId && (
+                        <span className="text-[10px] font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">ของคุณ</span>
                       )}
                     </div>
-                  ))}
-                </div>
-                <button onClick={addNewPage} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg text-sm transition shadow-sm">
-                  <PlusCircle className="w-4 h-4" /> สร้างหน้าสแกนใหม่
-                </button>
+                    <p className="text-sm text-slate-500 font-medium">{p.devices.length} / 100 อุปกรณ์</p>
+                  </div>
+                ))}
               </div>
 
               <div className="overflow-x-auto rounded-lg border border-slate-200">
@@ -243,16 +315,20 @@ export default function Home() {
                       <tr key={idx} className="hover:bg-slate-50 transition">
                         <td className="px-4 py-3 text-center text-sm font-semibold text-slate-400">{idx + 1}</td>
                         <td className="px-4 py-3">
-                          <input type="text" value={dev.name} onChange={(e) => handleDeviceChange(activePage.id, idx, 'name', e.target.value)} className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500" placeholder="เช่น Web Server" />
+                          <input type="text" value={dev.name} onChange={(e) => handleDeviceChange(activePage.id, idx, 'name', e.target.value)} disabled={!canEditActivePage} className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 text-slate-900 placeholder-slate-500 disabled:bg-slate-100 disabled:text-slate-500" placeholder="เช่น Web Server" />
                         </td>
                         <td className="px-4 py-3">
-                          <input type="text" value={dev.host} onChange={(e) => handleDeviceChange(activePage.id, idx, 'host', e.target.value)} className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 font-mono" placeholder="เช่น 1.1.1.1" />
+                          <input type="text" value={dev.host} onChange={(e) => handleDeviceChange(activePage.id, idx, 'host', e.target.value)} disabled={!canEditActivePage} className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 font-mono text-slate-900 placeholder-slate-500 disabled:bg-slate-100 disabled:text-slate-500" placeholder="เช่น 1.1.1.1" />
                         </td>
                         <td className="px-4 py-3">
-                          <input type="text" value={dev.ports} onChange={(e) => handleDeviceChange(activePage.id, idx, 'ports', e.target.value)} className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 font-mono" placeholder="80,443" />
+                          <input type="text" value={dev.ports} onChange={(e) => handleDeviceChange(activePage.id, idx, 'ports', e.target.value)} disabled={!canEditActivePage} className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 font-mono text-slate-900 placeholder-slate-500 disabled:bg-slate-100 disabled:text-slate-500" placeholder="80,443" />
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <button onClick={() => removeDevice(idx)} className="text-slate-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                          {canEditActivePage ? (
+                            <button onClick={() => removeDevice(idx)} className="text-slate-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                          ) : (
+                            <span className="text-slate-300">-</span>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -260,18 +336,47 @@ export default function Home() {
                 </table>
               </div>
 
-              <div className="mt-6 flex flex-wrap gap-3 justify-between items-center">
-                <div className="flex gap-2">
-                  <button onClick={addDevice} className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg text-sm transition">
-                    <Plus className="w-4 h-4" /> เพิ่มรายการอุปกรณ์
-                  </button>
-                  <button onClick={handleSave} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg text-sm transition shadow-sm">
-                    <Save className="w-4 h-4" /> บันทึกข้อมูลไปยัง Database
+              <div className="mt-6 flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center bg-slate-50 p-4 md:p-5 rounded-xl border border-slate-200">
+                {/* Left side: Table Management */}
+                <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+                  {canEditActivePage && (
+                    <>
+                      <button onClick={addDevice} className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 font-medium rounded-lg text-sm transition border border-slate-200 shadow-sm">
+                        <Plus className="w-4 h-4" /> เพิ่มรายการอุปกรณ์
+                      </button>
+                      <button onClick={handleSave} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg text-sm transition shadow-sm">
+                        <Save className="w-4 h-4" /> บันทึกข้อมูลไปยัง Database
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {/* Right side: Scanning Actions */}
+                <div className="flex flex-wrap gap-3 items-center w-full lg:w-auto justify-start lg:justify-end pt-4 lg:pt-0 border-t lg:border-t-0 border-slate-200">
+                  <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-sm">
+                    <Timer className="w-4 h-4 text-slate-500" />
+                    <span className="text-sm font-semibold text-slate-700">สแกนอัตโนมัติ:</span>
+                    <select
+                      value={config.scanInterval || 'off'}
+                      onChange={(e) => setConfig({ ...config, scanInterval: e.target.value })}
+                      className="bg-slate-50 border border-slate-300 text-slate-700 text-sm rounded-md px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
+                    >
+                      <option value="off">ปิด (Off)</option>
+                      <option value="1">ทุก 1 นาที</option>
+                      <option value="5">ทุก 5 นาที</option>
+                      <option value="10">ทุก 10 นาที</option>
+                      <option value="30">ทุก 30 นาที</option>
+                    </select>
+                    {timeLeft !== null && (
+                      <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded border border-indigo-100 flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5" /> {formatTime(timeLeft)}
+                      </span>
+                    )}
+                  </div>
+                  <button onClick={startScan} disabled={scanning} className={`flex items-center gap-2 px-6 py-2.5 font-bold rounded-lg text-sm transition shadow-md w-full sm:w-auto justify-center ${scanning ? 'bg-slate-400 cursor-not-allowed text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200'}`}>
+                    <PlayCircle className="w-5 h-5" /> {scanning ? 'กำลังสแกน...' : 'เริ่มสแกนพอร์ตทั้งหมด'}
                   </button>
                 </div>
-                <button onClick={startScan} disabled={scanning} className={`flex items-center gap-2 px-6 py-2.5 font-bold rounded-lg text-sm transition shadow-md ${scanning ? 'bg-slate-400 cursor-not-allowed text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200'}`}>
-                  <PlayCircle className="w-4 h-4" /> {scanning ? 'กำลังสแกน...' : 'เริ่มสแกนพอร์ตทั้งหมด'}
-                </button>
               </div>
             </div>
           </section>
@@ -308,6 +413,9 @@ export default function Home() {
                   <TableProperties className="w-5 h-5 text-indigo-400" />
                   <h2 className="text-lg font-bold">ผลการตรวจพอร์ต</h2>
                 </div>
+                <button onClick={exportToTxt} className="flex items-center gap-2 px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-white font-medium rounded-lg text-sm transition border border-slate-600 shadow-sm">
+                  <FileText className="w-4 h-4" /> Export (.txt)
+                </button>
               </div>
               <div className="p-6">
                 <div className="overflow-x-auto rounded-lg border border-slate-200">
@@ -321,8 +429,8 @@ export default function Home() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-slate-200">
-                      {scanResults.map((result, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50">
+                      {[...scanResults].sort((a, b) => a.id - b.id).map((result) => (
+                        <tr key={result.id} className="hover:bg-slate-50">
                           <td className="px-6 py-4 font-medium text-slate-900">{result.name}</td>
                           <td className="px-6 py-4 text-slate-500 font-mono text-xs">{result.host}</td>
                           {Array.from({ length: 2 }).map((_, i) => {
