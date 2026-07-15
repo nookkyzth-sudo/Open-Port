@@ -101,8 +101,11 @@ export default function Home() {
       if (result?.error) {
         setAlert({ type: 'error', message: `Error: ${result.error}` })
       } else {
-        setAlert({ type: 'success', message: 'บันทึกข้อมูลเรียบร้อยแล้ว' })
-        setTimeout(() => setAlert(null), 3000)
+        setAlert({ type: 'success', message: 'บันทึกข้อมูลเรียบร้อยแล้ว ✓' })
+        setTimeout(() => setAlert(null), 5000)
+        // Reload data to refresh ipUpdatedAt timestamps
+        const freshData = await getAppData()
+        setPages(freshData.pages as Page[])
       }
     } catch (err: any) {
       const msg = err?.message || String(err)

@@ -99,12 +99,12 @@ export async function saveAppData(data: any) {
                   })
                 } else {
                   await tx.device.create({
-                    data: { name: d.name, host: d.host, ports: d.ports, order: idx, pageId: p.id }
+                    data: { name: d.name, host: d.host, ports: d.ports, order: idx, pageId: p.id, ipUpdatedAt: new Date() }
                   })
                 }
               } else {
                 await tx.device.create({
-                  data: { name: d.name, host: d.host, ports: d.ports, order: idx, pageId: p.id }
+                  data: { name: d.name, host: d.host, ports: d.ports, order: idx, pageId: p.id, ipUpdatedAt: new Date() }
                 })
               }
             }
