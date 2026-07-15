@@ -54,76 +54,69 @@ export async function saveAppData(data: any) {
   const currentUser = await getCurrentUser()
   if (!currentUser) throw new Error('Unauthorized')
 
-  // Transaction to safely update everything
-  await prisma.$transaction(async (tx) => {
-    // Upsert config
-    if (data.config) {
-      await tx.config.upsert({
-        where: { id: 'app-data' },
-        update: {
-          activePageId: data.config.activePageId,
-          scanInterval: data.config.scanInterval,
-        },
-        create: {
-          id: 'app-data',
-          activePageId: data.config.activePageId,
-          scanInterval: data.config.scanInterval,
-        }
-      })
-    }
+  try {
+    await prisma.$transaction(async (tx) => {
+      if (data.config) {
+        await tx.config.upsert({
+          where: { id: 'app-data' },
+          update: { activePageId: data.config.activePageId, scanInterval: data.config.scanInterval },
+          create: { id: 'app-data', activePageId: data.config.activePageId, scanInterval: data.config.scanInterval }
+        })
+      }
 
-    const isSuperAdmin = currentUser.username === 'nook.cctv'
-
-    // Update or Insert pages
-    if (Array.isArray(data.pages)) {
-      // Filter pages: if superadmin, allow all. Else, only allow their own.
-      const pagesToSave = data.pages.filter((p: any) => isSuperAdmin || p.userId === currentUser.userId || !p.userId)
-      
-      for (let i = 0; i < pagesToSave.length; i++) {
-        const p = pagesToSave[i]
-
-        const existingPage = await tx.page.findUnique({ where: { id: p.id } })
-        if (existingPage && !isSuperAdmin && existingPage.userId !== currentUser.userId) {
-          continue // Skip if not owner and not superadmin
-        }
-
-        const targetUserId = existingPage?.userId || p.userId || currentUser.userId
-
-        // Get existing devices
-        const existingDevices = await tx.device.findMany({ where: { pageId: p.id } })
-        const incomingIds = Array.isArray(p.devices) ? p.devices.map((d: any) => d.id).filter(Boolean) : []
+      const isSuperAdmin = currentUser.username === 'nook.cctv'
+      if (Array.isArray(data.pages)) {
+        const pagesToSave = data.pages.filter((p: any) => isSuperAdmin || p.userId === currentUser.userId || !p.userId)
         
-        // Delete devices that were removed in the UI
-        await tx.device.deleteMany({
-          where: { pageId: p.id, id: { notIn: incomingIds } }
-        })
+        for (let i = 0; i < pagesToSave.length; i++) {
+          const p = pagesToSave[i]
+          const existingPage = await tx.page.findUnique({ where: { id: p.id } })
+          if (existingPage && !isSuperAdmin && existingPage.userId !== currentUser.userId) continue
 
-        // Upsert page info
-        await tx.page.upsert({
-          where: { id: p.id },
-          update: { name: p.name, order: i },
-          create: { id: p.id, name: p.name, order: i, userId: targetUserId }
-        })
+          const targetUserId = existingPage?.userId || p.userId || currentUser.userId
+          const existingDevices = await tx.device.findMany({ where: { pageId: p.id } })
+          const incomingIds = Array.isArray(p.devices) ? p.devices.map((d: any) => d.id).filter(Boolean) : []
+          
+          await tx.device.deleteMany({
+            where: { pageId: p.id, id: { notIn: incomingIds } }
+          })
 
-        // Upsert devices to preserve original UUID and ipUpdatedAt
-        if (Array.isArray(p.devices)) {
-          for (let idx = 0; idx < p.devices.length; idx++) {
-            const d = p.devices[idx]
-            if (d.id) {
-              await tx.device.update({
-                where: { id: d.id },
-                data: { name: d.name, host: d.host, ports: d.ports, order: idx }
-              })
-            } else {
-              await tx.device.create({
-                data: { name: d.name, host: d.host, ports: d.ports, order: idx, pageId: p.id }
-              })
+          await tx.page.upsert({
+            where: { id: p.id },
+            update: { name: p.name, order: i },
+            create: { id: p.id, name: p.name, order: i, userId: targetUserId }
+          })
+
+          if (Array.isArray(p.devices)) {
+            for (let idx = 0; idx < p.devices.length; idx++) {
+              const d = p.devices[idx]
+              if (d.id) {
+                // Instead of update which can fail if record doesn't exist, use upsert or check if it exists
+                const devExists = existingDevices.some(ed => ed.id === d.id)
+                if (devExists) {
+                  await tx.device.update({
+                    where: { id: d.id },
+                    data: { name: d.name, host: d.host, ports: d.ports, order: idx }
+                  })
+                } else {
+                  await tx.device.create({
+                    data: { name: d.name, host: d.host, ports: d.ports, order: idx, pageId: p.id }
+                  })
+                }
+              } else {
+                await tx.device.create({
+                  data: { name: d.name, host: d.host, ports: d.ports, order: idx, pageId: p.id }
+                })
+              }
             }
           }
         }
       }
-    }
-  })
+    })
+  } catch (err) {
+    console.error('SAVE ERROR:', err)
+    throw err
+  }
   
   return { success: true }
 }
