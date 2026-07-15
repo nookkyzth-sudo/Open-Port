@@ -6,7 +6,7 @@ import { getAppData, saveAppData } from './actions'
 import { getCurrentUser, logout } from './auth-actions'
 import Link from 'next/link'
 
-type Device = { name: string, host: string, ports: string }
+type Device = { id?: string, name: string, host: string, ports: string, ipUpdatedAt?: string | Date }
 type Page = { id: string, name: string, userId?: string | null, user?: { username: string } | null, devices: Device[] }
 type Config = { activePageId: string | null, scanInterval: string | null }
 type ScanResult = { id: number, name: string, host: string, results: { port: number, status: string }[] }
@@ -114,14 +114,12 @@ export default function Home() {
     }))
   }
 
-  const addDevice = () => {
-    setPages(prev => prev.map(p => {
-      if (p.id !== activePageId) return p
-      if (p.devices.length >= 100) {
-        setAlert({ type: 'error', message: 'จำกัดสูงสุด 100 อุปกรณ์ต่อผู้ใช้' })
-        return p
+  const addDevice = (pageId: string) => {
+    setPages(pages.map(p => {
+      if (p.id === pageId) {
+        return { ...p, devices: [...p.devices, { name: '', host: '', ports: '' }] }
       }
-      return { ...p, devices: [...p.devices, { name: '', host: '', ports: '' }] }
+      return p
     }))
   }
 
@@ -316,21 +314,37 @@ export default function Home() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-slate-200">
-                    {activePage?.devices.map((dev, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50 transition">
-                        <td className="px-4 py-3 text-center text-sm font-semibold text-slate-400">{idx + 1}</td>
+                    {activePage?.devices.map((d, i) => (
+                      <tr key={i} className="hover:bg-slate-50 transition">
+                        <td className="px-4 py-3 text-center text-sm font-semibold text-slate-400">{i + 1}</td>
                         <td className="px-4 py-3">
-                          <input type="text" value={dev.name} onChange={(e) => handleDeviceChange(activePage.id, idx, 'name', e.target.value)} disabled={!canEditActivePage} className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 text-slate-900 placeholder-slate-500 disabled:bg-slate-100 disabled:text-slate-500" placeholder="เช่น Web Server" />
+                          <input type="text" value={d.name} onChange={(e) => handleDeviceChange(activePage.id, i, 'name', e.target.value)} disabled={!canEditActivePage} className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 text-slate-900 placeholder-slate-500 disabled:bg-slate-100 disabled:text-slate-500" placeholder="เช่น Web Server" />
                         </td>
                         <td className="px-4 py-3">
-                          <input type="text" value={dev.host} onChange={(e) => handleDeviceChange(activePage.id, idx, 'host', e.target.value)} disabled={!canEditActivePage} className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 font-mono text-slate-900 placeholder-slate-500 disabled:bg-slate-100 disabled:text-slate-500" placeholder="เช่น 1.1.1.1" />
+                          <div className="flex flex-col gap-1">
+                            <input 
+                              type="text" 
+                              value={d.host}
+                              onChange={(e) => handleDeviceChange(activePage.id, i, 'host', e.target.value)}
+                              disabled={!canEditActivePage}
+                              placeholder="e.g. 192.168.1.100"
+                              className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 font-mono text-slate-900 placeholder-slate-500 disabled:bg-slate-100 disabled:text-slate-500"
+                            />
+                            {d.ipUpdatedAt && (
+                              <span className="text-[10px] text-slate-500/80 italic px-1">
+                                อัปเดต: {new Date(d.ipUpdatedAt).toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: '2-digit' })} 
+                                {' '}
+                                (ใช้มา {Math.floor((new Date().getTime() - new Date(d.ipUpdatedAt).getTime()) / (1000 * 60 * 60 * 24))} วัน)
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3">
-                          <input type="text" value={dev.ports} onChange={(e) => handleDeviceChange(activePage.id, idx, 'ports', e.target.value)} disabled={!canEditActivePage} className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 font-mono text-slate-900 placeholder-slate-500 disabled:bg-slate-100 disabled:text-slate-500" placeholder="80,443" />
+                          <input type="text" value={d.ports} onChange={(e) => handleDeviceChange(activePage.id, i, 'ports', e.target.value)} disabled={!canEditActivePage} className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 font-mono text-slate-900 placeholder-slate-500 disabled:bg-slate-100 disabled:text-slate-500" placeholder="80,443" />
                         </td>
                         <td className="px-4 py-3 text-center">
                           {canEditActivePage ? (
-                            <button onClick={() => removeDevice(idx)} className="text-slate-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                            <button onClick={() => removeDevice(i)} className="text-slate-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
                           ) : (
                             <span className="text-slate-300">-</span>
                           )}
@@ -346,7 +360,7 @@ export default function Home() {
                 <div className="flex flex-wrap gap-2">
                   {canEditActivePage && (
                     <>
-                      <button onClick={addDevice} className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 font-medium rounded-lg text-xs transition border border-slate-200 shadow-sm">
+                      <button onClick={() => activePage && addDevice(activePage.id)} className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 font-medium rounded-lg text-xs transition border border-slate-200 shadow-sm">
                         <Plus className="w-3.5 h-3.5" /> เพิ่มอุปกรณ์
                       </button>
                       <button onClick={handleSave} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg text-xs transition shadow-sm">

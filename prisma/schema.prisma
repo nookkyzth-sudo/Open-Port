@@ -23,14 +23,15 @@ model Page {
 }
 
 model Device {
-  id      String @id @default(cuid())
-  name    String
-  host    String
-  ports   String
-  order   Int    @default(0)
+  id          String   @id @default(cuid())
+  name        String
+  host        String
+  ports       String
+  order       Int      @default(0)
+  ipUpdatedAt DateTime @default(now())
   
-  pageId  String
-  page    Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  pageId      String
+  page        Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
 }
 
 model User {

@@ -89,32 +89,38 @@ export async function saveAppData(data: any) {
 
         const targetUserId = existingPage?.userId || p.userId || currentUser.userId
 
-        // Delete existing devices for this page to replace them
-        await tx.device.deleteMany({ where: { pageId: p.id } })
+        // Get existing devices
+        const existingDevices = await tx.device.findMany({ where: { pageId: p.id } })
+        const incomingIds = Array.isArray(p.devices) ? p.devices.map((d: any) => d.id).filter(Boolean) : []
         
+        // Delete devices that were removed in the UI
+        await tx.device.deleteMany({
+          where: { pageId: p.id, id: { notIn: incomingIds } }
+        })
+
+        // Upsert page info
         await tx.page.upsert({
           where: { id: p.id },
-          update: {
-            name: p.name,
-            order: i,
-            devices: {
-              create: Array.isArray(p.devices) ? p.devices.map((d: any, idx: number) => ({
-                name: d.name, host: d.host, ports: d.ports, order: idx
-              })) : []
-            }
-          },
-          create: {
-            id: p.id,
-            name: p.name,
-            order: i,
-            userId: targetUserId,
-            devices: {
-              create: Array.isArray(p.devices) ? p.devices.map((d: any, idx: number) => ({
-                name: d.name, host: d.host, ports: d.ports, order: idx
-              })) : []
+          update: { name: p.name, order: i },
+          create: { id: p.id, name: p.name, order: i, userId: targetUserId }
+        })
+
+        // Upsert devices to preserve original UUID and ipUpdatedAt
+        if (Array.isArray(p.devices)) {
+          for (let idx = 0; idx < p.devices.length; idx++) {
+            const d = p.devices[idx]
+            if (d.id) {
+              await tx.device.update({
+                where: { id: d.id },
+                data: { name: d.name, host: d.host, ports: d.ports, order: idx }
+              })
+            } else {
+              await tx.device.create({
+                data: { name: d.name, host: d.host, ports: d.ports, order: idx, pageId: p.id }
+              })
             }
           }
-        })
+        }
       }
     }
   })
