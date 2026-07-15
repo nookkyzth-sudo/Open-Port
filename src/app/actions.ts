@@ -91,7 +91,6 @@ export async function saveAppData(data: any) {
             for (let idx = 0; idx < p.devices.length; idx++) {
               const d = p.devices[idx]
               if (d.id) {
-                // Instead of update which can fail if record doesn't exist, use upsert or check if it exists
                 const devExists = existingDevices.some(ed => ed.id === d.id)
                 if (devExists) {
                   await tx.device.update({
@@ -113,10 +112,11 @@ export async function saveAppData(data: any) {
         }
       }
     })
-  } catch (err) {
-    console.error('SAVE ERROR:', err)
-    throw err
+  } catch (err: any) {
+    const msg = err?.message || String(err)
+    console.error('SAVE ERROR:', msg)
+    return { success: false, error: msg }
   }
   
-  return { success: true }
+  return { success: true, error: null }
 }

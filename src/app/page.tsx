@@ -97,9 +97,13 @@ export default function Home() {
     try {
       const isSuperAdmin = currentUser?.username === 'nook.cctv'
       const pagesToSave = pages.filter(p => isSuperAdmin ? true : p.userId === currentUser?.userId)
-      await saveAppData({ pages: pagesToSave, config: { ...config, activePageId } })
-      setAlert({ type: 'success', message: 'บันทึกข้อมูลเรียบร้อยแล้ว' })
-      setTimeout(() => setAlert(null), 3000)
+      const result = await saveAppData({ pages: pagesToSave, config: { ...config, activePageId } })
+      if (result?.error) {
+        setAlert({ type: 'error', message: `Error: ${result.error}` })
+      } else {
+        setAlert({ type: 'success', message: 'บันทึกข้อมูลเรียบร้อยแล้ว' })
+        setTimeout(() => setAlert(null), 3000)
+      }
     } catch (err: any) {
       const msg = err?.message || String(err)
       setAlert({ type: 'error', message: `Error: ${msg}` })
