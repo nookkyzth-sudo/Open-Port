@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { ShieldAlert, Radio, Server, Database, Timer, Save, ListPlus, Info, PlusCircle, Clock, Plus, RotateCcw, PlayCircle, TableProperties, FileText, X, ChevronLeft, ChevronRight, Edit2, Trash2, AlertCircle, CheckCircle, User, LogOut } from 'lucide-react'
+import { ShieldAlert, Radio, Server, Database, Timer, Save, ListPlus, Info, PlusCircle, Clock, Plus, RotateCcw, PlayCircle, TableProperties, FileText, X, ChevronLeft, ChevronRight, Edit2, Trash2, AlertCircle, CheckCircle, User, LogOut, Activity, AlertTriangle } from 'lucide-react'
 import { getAppData, saveAppData } from './actions'
 import { getCurrentUser, logout } from './auth-actions'
 import Link from 'next/link'
 
-type Device = { id?: string, name: string, host: string, ports: string, ipUpdatedAt?: string | Date | null }
+type Device = { id?: string, name: string, host: string, ports: string, ipUpdatedAt?: string | Date | null, isOffline?: boolean }
 type Page = { id: string, name: string, userId?: string | null, user?: { username: string } | null, devices: Device[] }
 type Config = { activePageId: string | null, scanInterval: string | null }
 type ScanResult = { id: number, name: string, host: string, results: { port: number, status: string }[] }
@@ -145,6 +145,10 @@ export default function Home() {
   const isSuperAdmin = currentUser?.username === 'nook.cctv'
   const canEditActivePage = activePage?.userId === currentUser?.userId || isSuperAdmin || !activePage?.userId
 
+  const offlineDevices = pages.flatMap(p => 
+    p.devices.map(d => ({ ...d, pageName: p.name, userName: p.user?.username }))
+  ).filter(d => d.isOffline && d.host && d.ports)
+
   const exportToTxt = () => {
     if (!activePage) return
     let content = ''
@@ -259,6 +263,9 @@ export default function Home() {
             </span>
             {currentUser && (
               <>
+                <Link href="/bg-scanner" className="text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition border border-indigo-100">
+                  <Activity className="w-3.5 h-3.5" /> Dashboard หลังบ้าน
+                </Link>
                 <Link href="/profile" className="text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1 bg-slate-100 text-slate-700 hover:bg-slate-200 transition border border-slate-200">
                   <User className="w-3.5 h-3.5" /> {currentUser.username}
                 </Link>
@@ -274,6 +281,22 @@ export default function Home() {
           <div className={`mb-6 p-4 rounded-xl flex items-start gap-3 border ${alert.type === 'error' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'}`}>
             {alert.type === 'error' ? <AlertCircle className="w-5 h-5 shrink-0" /> : <CheckCircle className="w-5 h-5 shrink-0" />}
             <div className="text-sm font-medium">{alert.message}</div>
+          </div>
+        )}
+
+        {offlineDevices.length > 0 && (
+          <div className="mb-6 p-4 rounded-xl flex flex-col gap-2 border bg-rose-50 border-rose-200 text-rose-800 shadow-sm animate-pulse">
+            <div className="flex items-center gap-2 font-bold text-rose-900">
+              <AlertTriangle className="w-5 h-5 shrink-0" />
+              แจ้งเตือน: พบอุปกรณ์ไม่สามารถเชื่อมต่อได้ (ออฟไลน์)
+            </div>
+            <ul className="text-sm font-medium pl-7 list-disc">
+              {offlineDevices.map((d, idx) => (
+                <li key={idx}>
+                  อุปกรณ์ <strong>{d.name || 'ไม่ระบุชื่อ'}</strong> ({d.host}) ของผู้ใช้ <strong>{d.userName || d.pageName}</strong> ไม่สามารถเชื่อมต่อพอร์ตใดๆ ได้เลย
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 

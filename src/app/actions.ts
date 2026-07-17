@@ -140,3 +140,17 @@ export async function saveAppData(data: any) {
   
   return { success: true, error: null }
 }
+
+export async function getBackgroundScanData() {
+  const devices = await prisma.device.findMany({
+    include: {
+      page: {
+        include: {
+          user: { select: { username: true } }
+        }
+      }
+    },
+    orderBy: { pageId: 'asc' }
+  })
+  return devices
+}
