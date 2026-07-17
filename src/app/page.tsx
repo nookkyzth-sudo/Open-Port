@@ -96,7 +96,7 @@ export default function Home() {
   const handleSave = async () => {
     try {
       const isSuperAdmin = currentUser?.username === 'nook.cctv'
-      const pagesToSave = pages.filter(p => isSuperAdmin ? true : p.userId === currentUser?.userId)
+      const pagesToSave = pages.filter(p => isSuperAdmin ? true : (p.userId === currentUser?.userId || !p.userId))
       const result = await saveAppData({ pages: pagesToSave, config: { ...config, activePageId } })
       if (result?.error) {
         setAlert({ type: 'error', message: `Error: ${result.error}` })
@@ -143,7 +143,7 @@ export default function Home() {
 
   const activePage = pages.find(p => p.id === activePageId)
   const isSuperAdmin = currentUser?.username === 'nook.cctv'
-  const canEditActivePage = activePage?.userId === currentUser?.userId || isSuperAdmin
+  const canEditActivePage = activePage?.userId === currentUser?.userId || isSuperAdmin || !activePage?.userId
 
   const exportToTxt = () => {
     if (!activePage) return
@@ -304,6 +304,9 @@ export default function Home() {
                       </h3>
                       {p.userId === currentUser?.userId && (
                         <span className="text-[9px] font-bold bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full shrink-0">ของคุณ</span>
+                      )}
+                      {!p.userId && (
+                        <span className="text-[9px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full shrink-0">ส่วนรวม</span>
                       )}
                     </div>
                     <p className="text-xs text-slate-500 font-medium ml-5">{p.devices.length} / 100 อุปกรณ์</p>

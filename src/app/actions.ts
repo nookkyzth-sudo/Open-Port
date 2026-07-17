@@ -6,12 +6,12 @@ import { getCurrentUser } from './auth-actions'
 export async function getAppData() {
   const currentUser = await getCurrentUser()
   
-  // Cleanup orphaned pages
+  // Cleanup orphaned pages (except TEST Port)
   try {
-    const oldPages = await prisma.page.findMany({ where: { userId: null } })
+    const oldPages = await prisma.page.findMany({ where: { userId: null, name: { not: 'TEST Port' } } })
     if (oldPages.length > 0) {
       await prisma.device.deleteMany({ where: { pageId: { in: oldPages.map(p => p.id) } } })
-      await prisma.page.deleteMany({ where: { userId: null } })
+      await prisma.page.deleteMany({ where: { userId: null, name: { not: 'TEST Port' } } })
     }
   } catch (e) {
     console.error('Cleanup failed', e)
@@ -25,6 +25,26 @@ export async function getAppData() {
     },
     orderBy: { order: 'asc' }
   })
+
+  // Ensure TEST Port page exists
+  let testPortPage = pages.find(p => p.name === 'TEST Port' && p.userId === null)
+  if (!testPortPage) {
+    testPortPage = await prisma.page.create({
+      data: {
+        name: 'TEST Port',
+        userId: null,
+        order: -1,
+        devices: {
+          create: [{ name: '', host: '', ports: '' }]
+        }
+      },
+      include: {
+        devices: { orderBy: { order: 'asc' } },
+        user: { select: { username: true } }
+      }
+    })
+    pages.unshift(testPortPage)
+  }
 
   // If the current user doesn't have a page in the DB, create one automatically
   if (currentUser) {
@@ -71,9 +91,9 @@ export async function saveAppData(data: any) {
         for (let i = 0; i < pagesToSave.length; i++) {
           const p = pagesToSave[i]
           const existingPage = await tx.page.findUnique({ where: { id: p.id } })
-          if (existingPage && !isSuperAdmin && existingPage.userId !== currentUser.userId) continue
+          if (existingPage && !isSuperAdmin && existingPage.userId !== currentUser.userId && existingPage.userId !== null) continue
 
-          const targetUserId = existingPage?.userId || p.userId || currentUser.userId
+          const targetUserId = existingPage ? existingPage.userId : (p.userId !== undefined ? p.userId : currentUser.userId)
           const existingDevices = await tx.device.findMany({ where: { pageId: p.id } })
           const incomingIds = Array.isArray(p.devices) ? p.devices.map((d: any) => d.id).filter(Boolean) : []
           
