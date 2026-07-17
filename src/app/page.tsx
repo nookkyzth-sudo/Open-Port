@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { ShieldAlert, Radio, Server, Database, Timer, Save, ListPlus, Info, PlusCircle, Clock, Plus, RotateCcw, PlayCircle, TableProperties, FileText, X, ChevronLeft, ChevronRight, Edit2, Trash2, AlertCircle, CheckCircle, User, LogOut, Activity, AlertTriangle } from 'lucide-react'
-import { getAppData, saveAppData } from './actions'
+import { getAppData, saveAppData, getBackgroundScanData } from './actions'
 import { getCurrentUser, logout } from './auth-actions'
 import Link from 'next/link'
 
@@ -26,6 +26,8 @@ export default function Home() {
   
   const [alert, setAlert] = useState<{ type: 'error'|'success'|'info', message: string } | null>(null)
   
+  const [liveOfflineStatuses, setLiveOfflineStatuses] = useState<Record<string, boolean>>({})
+
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
   const timeLeftRef = useRef<number | null>(null)
   const startScanRef = useRef<() => void>(() => {})
@@ -38,6 +40,22 @@ export default function Home() {
 
   useEffect(() => {
     loadData()
+    
+    // Auto-refresh offline status every 30 seconds
+    const fetchOffline = async () => {
+      try {
+        const data = await getBackgroundScanData()
+        const statusMap: Record<string, boolean> = {}
+        data.forEach((d: any) => {
+          statusMap[d.id] = d.isOffline
+        })
+        setLiveOfflineStatuses(statusMap)
+      } catch (e) {}
+    }
+    
+    fetchOffline()
+    const offlineIntv = setInterval(fetchOffline, 30000)
+    return () => clearInterval(offlineIntv)
   }, [])
 
   useEffect(() => {
@@ -146,7 +164,10 @@ export default function Home() {
   const canEditActivePage = activePage?.userId === currentUser?.userId || isSuperAdmin || !activePage?.userId
 
   const offlineDevices = pages.flatMap(p => 
-    p.devices.map(d => ({ ...d, pageName: p.name, userName: p.user?.username }))
+    p.devices.map(d => {
+      const isLiveOffline = (d.id && liveOfflineStatuses[d.id] !== undefined) ? liveOfflineStatuses[d.id] : d.isOffline
+      return { ...d, isOffline: isLiveOffline, pageName: p.name, userName: p.user?.username }
+    })
   ).filter(d => d.isOffline && d.host && d.ports)
 
   const exportToTxt = () => {
