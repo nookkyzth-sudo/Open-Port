@@ -3,15 +3,18 @@ import net from 'net';
 
 export const maxDuration = 60; // Max duration for Vercel Hobby is 10s, Pro is 60s
 
-function scanPort(host: string, port: number, timeout = 2000): Promise<{ port: number, status: string }> {
+function scanPort(host: string, port: number, timeout = 2000): Promise<{ port: number, status: string, latency: number | null }> {
     return new Promise((resolve) => {
         const socket = new net.Socket();
         let status = 'CLOSED/TIMEOUT';
+        let latency: number | null = null;
+        const startTime = Date.now();
         
         socket.setTimeout(timeout);
         
         socket.on('connect', () => {
             status = 'CONNECTED';
+            latency = Date.now() - startTime;
             socket.destroy();
         });
         
@@ -24,7 +27,7 @@ function scanPort(host: string, port: number, timeout = 2000): Promise<{ port: n
         });
         
         socket.on('close', () => {
-            resolve({ port, status });
+            resolve({ port, status, latency });
         });
         
         socket.connect(port, host);

@@ -154,3 +154,34 @@ export async function getBackgroundScanData() {
   })
   return devices
 }
+
+export async function getLineNotifyToken() {
+  const currentUser = await getCurrentUser()
+  if (currentUser?.username !== 'nook.cctv') return null
+  
+  const config = await prisma.config.findUnique({ where: { id: 'app-data' } })
+  return config?.lineNotifyToken || ''
+}
+
+export async function saveLineNotifyToken(token: string) {
+  const currentUser = await getCurrentUser()
+  if (currentUser?.username !== 'nook.cctv') throw new Error('Unauthorized')
+  
+  await prisma.config.upsert({
+    where: { id: 'app-data' },
+    update: { lineNotifyToken: token },
+    create: { id: 'app-data', lineNotifyToken: token }
+  })
+  return { success: true }
+}
+
+export async function getDeviceLogs() {
+  const logs = await prisma.deviceLog.findMany({
+    include: {
+      device: { select: { name: true, host: true, page: { select: { name: true, user: { select: { username: true } } } } } }
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 100 // show last 100 logs
+  })
+  return logs
+}

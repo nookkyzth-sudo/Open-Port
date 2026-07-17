@@ -1,14 +1,32 @@
 'use client'
 
 import { useState } from 'react'
-import { changePassword, logout } from '@/app/auth-actions'
-import { ShieldAlert, KeyRound, AlertCircle, CheckCircle, ArrowLeft, LogOut } from 'lucide-react'
+import { changePassword, logout, getCurrentUser } from '@/app/auth-actions'
+import { ShieldAlert, KeyRound, AlertCircle, CheckCircle, ArrowLeft, LogOut, MessageSquare } from 'lucide-react'
 import Link from 'next/link'
+import { getLineNotifyToken, saveLineNotifyToken } from '@/app/actions'
+import { useEffect } from 'react'
 
 export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [lineToken, setLineToken] = useState('')
+  const [lineLoading, setLineLoading] = useState(false)
+  const [lineMessage, setLineMessage] = useState<{type: 'error'|'success', text: string} | null>(null)
+
+  useEffect(() => {
+    async function load() {
+      const user = await getCurrentUser()
+      setCurrentUser(user)
+      if (user?.username === 'nook.cctv') {
+        const token = await getLineNotifyToken()
+        if (token) setLineToken(token)
+      }
+    }
+    load()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -104,6 +122,56 @@ export default function ProfilePage() {
           </form>
         </div>
       </div>
+
+      {currentUser?.username === 'nook.cctv' && (
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden mt-6">
+          <div className="p-6 bg-emerald-900 text-white flex items-center gap-2">
+            <MessageSquare className="w-6 h-6 text-emerald-400" />
+            <h2 className="text-xl font-bold">ตั้งค่าการแจ้งเตือน (LINE Notify)</h2>
+          </div>
+          
+          <div className="p-8">
+            {lineMessage && (
+              <div className={`mb-6 p-3 text-sm rounded-lg flex items-center gap-2 border ${lineMessage.type === 'error' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}>
+                {lineMessage.type === 'error' ? <AlertCircle className="w-5 h-5 shrink-0" /> : <CheckCircle className="w-5 h-5 shrink-0" />}
+                {lineMessage.text}
+              </div>
+            )}
+            
+            <form onSubmit={async (e) => {
+              e.preventDefault()
+              setLineLoading(true)
+              setLineMessage(null)
+              try {
+                await saveLineNotifyToken(lineToken)
+                setLineMessage({ type: 'success', text: 'บันทึก Token สำเร็จแล้ว' })
+              } catch (err: any) {
+                setLineMessage({ type: 'error', text: err.message })
+              }
+              setLineLoading(false)
+            }} className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">LINE Notify Token</label>
+                <p className="text-xs text-slate-500 mb-2">ออก Token ได้ที่ <a href="https://notify-bot.line.me/my/" target="_blank" rel="noreferrer" className="text-indigo-600 underline">notify-bot.line.me</a></p>
+                <input
+                  type="text"
+                  value={lineToken}
+                  onChange={(e) => setLineToken(e.target.value)}
+                  placeholder="พิมพ์ Token ที่นี่..."
+                  className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 transition text-slate-900"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={lineLoading}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-lg transition flex items-center justify-center gap-2 mt-6"
+              >
+                {lineLoading ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่า LINE'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

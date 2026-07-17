@@ -9,7 +9,7 @@ import Link from 'next/link'
 type Device = { id?: string, name: string, host: string, ports: string, ipUpdatedAt?: string | Date | null, isOffline?: boolean }
 type Page = { id: string, name: string, userId?: string | null, user?: { username: string } | null, devices: Device[] }
 type Config = { activePageId: string | null, scanInterval: string | null }
-type ScanResult = { id: number, name: string, host: string, results: { port: number, status: string }[] }
+type ScanResult = { id: number, name: string, host: string, results: { port: number, status: string, latency?: number | null }[] }
 
 export default function Home() {
   const [pages, setPages] = useState<Page[]>([])
@@ -496,7 +496,7 @@ export default function Home() {
                                 <div className="flex items-center justify-center gap-2">
                                   <span className="font-mono text-xs font-semibold whitespace-nowrap">Port: {res.port}</span>
                                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${isConnected ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
-                                    {res.status}
+                                    {res.status} {res.latency != null ? `(${res.latency}ms)` : ''}
                                   </span>
                                 </div>
                               </td>

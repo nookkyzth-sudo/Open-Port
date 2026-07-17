@@ -12,6 +12,8 @@ type DeviceWithStats = {
   ports: string
   bgPort1Status: string | null
   bgPort2Status: string | null
+  bgLatency1: number | null
+  bgLatency2: number | null
   isOffline: boolean
   bgLastScannedAt: Date | null
   page: {
@@ -55,7 +57,12 @@ export default function BgScannerPage() {
                 <Activity className="w-6 h-6 text-emerald-600" />
                 Background Scanner Dashboard
               </h1>
-              <p className="text-slate-500 text-sm mt-1">ภาพรวมสถานะพอร์ตจากการสแกนเบื้องหลัง (อัตโนมัติ)</p>
+              <div className="flex items-center gap-3 mt-1">
+                <p className="text-slate-500 text-sm">ภาพรวมสถานะพอร์ตจากการสแกนเบื้องหลัง (อัตโนมัติ)</p>
+                <Link href="/bg-scanner/logs" className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 underline decoration-indigo-300 underline-offset-2">
+                  ดูประวัติการออฟไลน์
+                </Link>
+              </div>
             </div>
           </div>
           <button 
@@ -136,13 +143,15 @@ export default function BgScannerPage() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${d.bgPort1Status === 'CONNECTED' ? 'bg-emerald-50 text-emerald-600' : d.bgPort1Status ? 'bg-rose-50 text-rose-600' : 'text-slate-400'}`}>
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded ${d.bgPort1Status === 'CONNECTED' ? (d.bgLatency1 && d.bgLatency1 > 500 ? 'bg-orange-50 text-orange-600' : 'bg-emerald-50 text-emerald-600') : d.bgPort1Status ? 'bg-rose-50 text-rose-600' : 'text-slate-400'}`}>
                           {d.bgPort1Status || '-'}
+                          {d.bgLatency1 != null && ` (${d.bgLatency1}ms)`}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${d.bgPort2Status === 'CONNECTED' ? 'bg-emerald-50 text-emerald-600' : d.bgPort2Status && d.bgPort2Status !== '-' ? 'bg-rose-50 text-rose-600' : 'text-slate-400'}`}>
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded ${d.bgPort2Status === 'CONNECTED' ? (d.bgLatency2 && d.bgLatency2 > 500 ? 'bg-orange-50 text-orange-600' : 'bg-emerald-50 text-emerald-600') : d.bgPort2Status && d.bgPort2Status !== '-' ? 'bg-rose-50 text-rose-600' : 'text-slate-400'}`}>
                           {d.bgPort2Status || '-'}
+                          {d.bgLatency2 != null && ` (${d.bgLatency2}ms)`}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right text-xs text-slate-500">
