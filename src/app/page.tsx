@@ -277,12 +277,7 @@ export default function Home() {
           </div>
         </header>
 
-        {alert && (
-          <div className={`mb-6 p-4 rounded-xl flex items-start gap-3 border ${alert.type === 'error' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'}`}>
-            {alert.type === 'error' ? <AlertCircle className="w-5 h-5 shrink-0" /> : <CheckCircle className="w-5 h-5 shrink-0" />}
-            <div className="text-sm font-medium">{alert.message}</div>
-          </div>
-        )}
+
 
         {offlineDevices.length > 0 && (
           <div className="mb-6 p-4 rounded-xl flex flex-col gap-2 border bg-rose-50 border-rose-200 text-rose-800 shadow-sm animate-pulse">
@@ -432,6 +427,13 @@ export default function Home() {
                   </button>
                 </div>
               </div>
+              
+              {alert && (
+                <div className={`mt-4 p-4 rounded-xl flex items-center gap-3 border ${alert.type === 'error' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'} animate-in fade-in slide-in-from-top-2 duration-300`}>
+                  {alert.type === 'error' ? <AlertCircle className="w-5 h-5 shrink-0" /> : <CheckCircle className="w-5 h-5 shrink-0" />}
+                  <div className="text-sm font-bold">{alert.message}</div>
+                </div>
+              )}
             </div>
           </section>
 
