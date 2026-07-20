@@ -275,7 +275,7 @@ export default function Home() {
             <h1 className="text-3xl font-extrabold text-indigo-700 flex flex-wrap items-center justify-center xl:justify-start gap-2.5">
               <div className="flex items-center gap-2">
                 <ShieldAlert className="w-8 h-8 text-indigo-600 shrink-0" />
-                <span>Bulk Port Scanner</span>
+                <span>Open Port Scanner</span>
               </div>
               <span className="text-xs font-bold bg-indigo-100 text-indigo-800 px-2.5 py-1 rounded-full whitespace-nowrap tracking-wide">
                 REAL-TIME (Vercel)
