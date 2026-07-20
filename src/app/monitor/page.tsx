@@ -20,13 +20,25 @@ type PortStatus = {
 
 type HostStatus = {
   host: string
+  name: string
   results: PortStatus[]
 }
 
+type TargetSet = {
+  ip: string
+  port1: string
+  port2: string
+}
+
 export default function MonitorPage() {
-  const [hostsText, setHostsText] = useState('')
-  const [port1, setPort1] = useState('80')
-  const [port2, setPort2] = useState('')
+  const [targets, setTargets] = useState<TargetSet[]>([
+    { ip: '', port1: '80', port2: '' },
+    { ip: '', port1: '80', port2: '' },
+    { ip: '', port1: '80', port2: '' },
+    { ip: '', port1: '80', port2: '' },
+    { ip: '', port1: '80', port2: '' }
+  ])
+  
   const [intervalSecs, setIntervalSecs] = useState(30)
   const [isMonitoring, setIsMonitoring] = useState(false)
   const [countdown, setCountdown] = useState(30)
@@ -45,32 +57,54 @@ export default function MonitorPage() {
     return () => stopMonitoring()
   }, [])
 
+  const handleTargetChange = (index: number, field: keyof TargetSet, value: string) => {
+    const newTargets = [...targets]
+    newTargets[index] = { ...newTargets[index], [field]: value }
+    setTargets(newTargets)
+  }
+
   const startMonitoring = () => {
-    const rawHosts = hostsText.split('\n').map(h => h.trim()).filter(h => h.length > 0)
-    if (rawHosts.length === 0) {
-      alert('กรุณาระบุ IP หรือ โดเมน อย่างน้อย 1 รายการ')
+    const activeTargets = targets.map((t, idx) => ({ ...t, index: idx })).filter(t => t.ip.trim().length > 0)
+    
+    if (activeTargets.length === 0) {
+      alert('กรุณาระบุ IP หรือ โดเมน อย่างน้อย 1 ชุด')
       return
     }
-    const p1 = parseInt(port1)
-    if (isNaN(p1)) {
-      alert('กรุณาระบุ Port 1 ให้ถูกต้อง')
-      return
+
+    // Validate ports
+    for (const t of activeTargets) {
+      if (isNaN(parseInt(t.port1))) {
+        alert(`กรุณาระบุ Port 1 ให้ถูกต้อง ในชุดที่ ${t.index + 1}`)
+        return
+      }
     }
     
     setIsMonitoring(true)
     setLogs([]) // Clear history on start
     prevStatusesRef.current = {}
-    setCurrentStatuses(rawHosts.map(h => ({ host: h, results: [] })))
+    
+    const apiTargets = activeTargets.map(t => {
+      const ports = [parseInt(t.port1)]
+      const p2 = parseInt(t.port2)
+      if (!isNaN(p2) && p2 > 0) ports.push(p2)
+      return {
+        name: `ชุดที่ ${t.index + 1}`,
+        host: t.ip.trim(),
+        ports
+      }
+    })
+
+    setCurrentStatuses(apiTargets.map(t => ({ name: t.name, host: t.host, results: [] })))
     
     // First scan immediately
-    scanNow(rawHosts)
+    scanNow(apiTargets)
     
     // Setup interval
     setCountdown(intervalSecs)
     countdownRef.current = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
-          scanNow(rawHosts)
+          scanNow(apiTargets)
           return intervalSecs
         }
         return prev - 1
@@ -84,19 +118,12 @@ export default function MonitorPage() {
     if (monitorRef.current) clearInterval(monitorRef.current)
   }
 
-  const scanNow = async (hostsToScan: string[]) => {
-    const p1 = parseInt(port1)
-    const p2 = parseInt(port2)
-    const ports = [p1]
-    if (!isNaN(p2) && p2 > 0) ports.push(p2)
-    
-    const targets = hostsToScan.map(h => ({ name: 'Monitor', host: h, ports }))
-
+  const scanNow = async (apiTargets: any[]) => {
     try {
       const res = await fetch('/api/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targets })
+        body: JSON.stringify({ targets: apiTargets })
       })
 
       if (!res.body) throw new Error('No stream')
@@ -125,9 +152,9 @@ export default function MonitorPage() {
       }
     } catch (err) {
       // API error
-      hostsToScan.forEach(host => {
-        ports.forEach(p => {
-          addLog(host, p, 'ERROR', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์สแกนได้')
+      apiTargets.forEach(t => {
+        t.ports.forEach((p: number) => {
+          addLog(t.host, p, 'ERROR', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์สแกนได้')
         })
       })
     }
@@ -138,7 +165,7 @@ export default function MonitorPage() {
       const copy = [...prev]
       const idx = copy.findIndex(c => c.host === host)
       if (idx !== -1) {
-        copy[idx] = { host, results }
+        copy[idx] = { ...copy[idx], results }
       }
       return copy
     })
@@ -173,7 +200,7 @@ export default function MonitorPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans p-4 md:p-8">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <header className="mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
@@ -209,51 +236,57 @@ export default function MonitorPage() {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Controls */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-fit">
+          <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 h-fit lg:col-span-5 xl:col-span-4">
             <h2 className="text-lg font-bold mb-4 flex items-center gap-2 border-b pb-3 border-slate-100">
               <ServerCrash className="w-5 h-5 text-indigo-500" /> ตั้งค่าเป้าหมาย
             </h2>
             
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">IP Address / Domain (หลายรายการได้)</label>
-                <textarea 
-                  rows={4}
-                  value={hostsText}
-                  onChange={e => setHostsText(e.target.value)}
-                  disabled={isMonitoring}
-                  placeholder="เช่น:&#10;118.175.x.1&#10;118.175.x.2"
-                  className="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono disabled:opacity-60 resize-none"
-                />
+              
+              <div className="max-h-[400px] overflow-y-auto pr-2 space-y-3">
+                {targets.map((target, idx) => (
+                  <div key={idx} className={`p-3 rounded-xl border ${target.ip ? 'border-indigo-200 bg-indigo-50/30' : 'border-slate-200 bg-slate-50'}`}>
+                    <div className="text-xs font-bold text-slate-500 mb-2">ชุดที่ {idx + 1}</div>
+                    <div className="space-y-2">
+                      <input 
+                        type="text" 
+                        value={target.ip}
+                        onChange={e => handleTargetChange(idx, 'ip', e.target.value)}
+                        disabled={isMonitoring}
+                        placeholder="IP Address หรือ Domain"
+                        className="w-full px-3 py-1.5 text-sm bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono disabled:opacity-60"
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-500 mb-1">Port หลัก</label>
+                          <input 
+                            type="text" 
+                            value={target.port1}
+                            onChange={e => handleTargetChange(idx, 'port1', e.target.value)}
+                            disabled={isMonitoring}
+                            className="w-full px-3 py-1.5 text-sm bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono disabled:opacity-60"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-500 mb-1">Port รอง</label>
+                          <input 
+                            type="text" 
+                            value={target.port2}
+                            onChange={e => handleTargetChange(idx, 'port2', e.target.value)}
+                            disabled={isMonitoring}
+                            placeholder="เว้นว่างได้"
+                            className="w-full px-3 py-1.5 text-sm bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono disabled:opacity-60"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
               
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Port 1 (หลัก)</label>
-                  <input 
-                    type="text" 
-                    value={port1}
-                    onChange={e => setPort1(e.target.value)}
-                    disabled={isMonitoring}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono disabled:opacity-60"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Port 2 (รอง)</label>
-                  <input 
-                    type="text" 
-                    value={port2}
-                    onChange={e => setPort2(e.target.value)}
-                    disabled={isMonitoring}
-                    placeholder="เว้นว่างได้"
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono disabled:opacity-60"
-                  />
-                </div>
-              </div>
-              
-              <div>
+              <div className="pt-2">
                 <label className="block text-sm font-bold text-slate-700 mb-1 flex items-center gap-1.5"><Settings2 className="w-4 h-4" /> รอบสแกนทุกๆ (วินาที)</label>
                 <select 
                   value={intervalSecs}
@@ -290,19 +323,20 @@ export default function MonitorPage() {
           </div>
 
           {/* Status & History */}
-          <div className="lg:col-span-2 flex flex-col gap-6">
+          <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-6">
             
             {/* Live Status Cards (Scrollable if many) */}
             {currentStatuses.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[400px] overflow-y-auto pr-2 pb-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 max-h-[400px] overflow-y-auto pr-2 pb-2">
                 {currentStatuses.map((hs, i) => (
                   <div key={i} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-                    <div className="px-4 py-2 bg-slate-100 border-b border-slate-200 font-bold text-slate-700 font-mono text-sm truncate">
-                      {hs.host}
+                    <div className="px-4 py-2 bg-slate-100 border-b border-slate-200 flex justify-between items-center">
+                       <span className="font-bold text-slate-600 text-xs">{hs.name}</span>
+                       <span className="font-bold text-indigo-700 font-mono text-sm truncate max-w-[120px]">{hs.host}</span>
                     </div>
-                    <div className="p-4 grid grid-cols-2 gap-2 flex-1">
+                    <div className="p-4 grid grid-cols-1 gap-2 flex-1">
                       {hs.results.length === 0 ? (
-                        <div className="col-span-2 text-center text-slate-400 text-sm py-4">กำลังโหลด...</div>
+                        <div className="text-center text-slate-400 text-sm py-4">กำลังโหลด...</div>
                       ) : (
                         hs.results.map(s => (
                           <div key={s.port} className={`p-3 rounded-xl border ${s.status === 'CONNECTED' ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}`}>
