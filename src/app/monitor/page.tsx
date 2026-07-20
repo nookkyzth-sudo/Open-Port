@@ -177,17 +177,26 @@ export default function MonitorPage() {
       const stateKey = `${host}-${res.port}`
       const prevStatus = prevStatusesRef.current[stateKey]
       
-      if (res.status !== 'CONNECTED') {
-        if (!prevStatus || prevStatus === 'CONNECTED') {
-          addLog(host, res.port, res.status || 'ERROR', `การเชื่อมต่อขาดหาย (Timeout/Closed)`)
+      let nextStatus = res.status || 'ERROR'
+      if (res.status === 'CONNECTED' && res.latency !== null && res.latency > 300) {
+        nextStatus = 'SLOW'
+      }
+      
+      if (nextStatus === 'ERROR' || nextStatus === 'CLOSED/TIMEOUT') {
+        if (!prevStatus || prevStatus === 'CONNECTED' || prevStatus === 'SLOW') {
+          addLog(host, res.port, 'ERROR', `การเชื่อมต่อขาดหาย (Timeout/Closed)`)
         }
-      } else if (res.status === 'CONNECTED') {
+      } else if (nextStatus === 'SLOW') {
+        if (prevStatus !== 'SLOW') {
+           addLog(host, res.port, 'SLOW', `สัญญาณหน่วง/ช้าผิดปกติ (${res.latency}ms)`)
+        }
+      } else if (nextStatus === 'CONNECTED') {
         if (prevStatus && prevStatus !== 'CONNECTED') {
-           addLog(host, res.port, res.status, `เชื่อมต่อกลับมาได้แล้ว (${res.latency}ms)`)
+           addLog(host, res.port, 'CONNECTED', `เชื่อมต่อกลับมาปกติ (${res.latency}ms)`)
         }
       }
       
-      prevStatusesRef.current[stateKey] = res.status || 'ERROR'
+      prevStatusesRef.current[stateKey] = nextStatus
     })
   }
 
@@ -350,17 +359,17 @@ export default function MonitorPage() {
                         <div className="text-center text-slate-400 text-sm py-4">กำลังโหลด...</div>
                       ) : (
                         hs.results.map(s => (
-                          <div key={s.port} className={`p-3 rounded-xl border ${s.status === 'CONNECTED' ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}`}>
+                          <div key={s.port} className={`p-3 rounded-xl border ${s.status === 'CONNECTED' ? (s.latency && s.latency > 300 ? 'bg-orange-50 border-orange-200' : 'bg-emerald-50 border-emerald-200') : 'bg-rose-50 border-rose-200'}`}>
                             <div className="flex justify-between items-start mb-1">
                               <div className="font-bold text-xs text-slate-500">Port {s.port}</div>
                               {s.status === 'CONNECTED' ? (
-                                <CheckCircle className="w-4 h-4 text-emerald-500" />
+                                s.latency && s.latency > 300 ? <Clock className="w-4 h-4 text-orange-500" /> : <CheckCircle className="w-4 h-4 text-emerald-500" />
                               ) : (
                                 <AlertTriangle className="w-4 h-4 text-rose-500" />
                               )}
                             </div>
-                            <div className={`text-base font-extrabold ${s.status === 'CONNECTED' ? 'text-emerald-700' : 'text-rose-700'}`}>
-                              {s.status === 'CONNECTED' ? 'ONLINE' : 'OFFLINE'}
+                            <div className={`text-base font-extrabold ${s.status === 'CONNECTED' ? (s.latency && s.latency > 300 ? 'text-orange-700' : 'text-emerald-700') : 'text-rose-700'}`}>
+                              {s.status === 'CONNECTED' ? (s.latency && s.latency > 300 ? 'SLOW' : 'ONLINE') : 'OFFLINE'}
                             </div>
                             <div className="text-[10px] font-semibold mt-1 opacity-70 truncate">
                               {s.status === 'CONNECTED' ? `${s.latency} ms` : 'Timeout'}
@@ -389,12 +398,14 @@ export default function MonitorPage() {
                 ) : (
                   <ul className="divide-y divide-slate-100">
                     {logs.map((log, idx) => (
-                      <li key={idx} className={`p-4 hover:bg-slate-50 ${log.status === 'CONNECTED' ? 'border-l-4 border-emerald-500' : 'border-l-4 border-rose-500'}`}>
+                      <li key={idx} className={`p-4 hover:bg-slate-50 ${log.status === 'CONNECTED' ? 'border-l-4 border-emerald-500' : log.status === 'SLOW' ? 'border-l-4 border-orange-500' : 'border-l-4 border-rose-500'}`}>
                         <div className="flex justify-between items-start">
                           <div className="flex items-start gap-3">
                             <div className="mt-0.5">
                               {log.status === 'CONNECTED' ? (
                                 <CheckCircle className="w-5 h-5 text-emerald-500" />
+                              ) : log.status === 'SLOW' ? (
+                                <Clock className="w-5 h-5 text-orange-500" />
                               ) : (
                                 <AlertTriangle className="w-5 h-5 text-rose-500" />
                               )}
