@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Activity, PlayCircle, Square, AlertTriangle, CheckCircle, Clock, ArrowLeft, RefreshCw, ServerCrash } from 'lucide-react'
+import { Activity, PlayCircle, Square, AlertTriangle, CheckCircle, Clock, ArrowLeft, RefreshCw, ServerCrash, Settings2 } from 'lucide-react'
 import Link from 'next/link'
 
 type LogEntry = {
   time: Date
+  host: string
   port: number
   status: string
   message: string
@@ -17,19 +18,27 @@ type PortStatus = {
   latency: number | null
 }
 
+type HostStatus = {
+  host: string
+  results: PortStatus[]
+}
+
 export default function MonitorPage() {
-  const [host, setHost] = useState('')
+  const [hostsText, setHostsText] = useState('')
   const [port1, setPort1] = useState('80')
   const [port2, setPort2] = useState('')
+  const [intervalSecs, setIntervalSecs] = useState(30)
   const [isMonitoring, setIsMonitoring] = useState(false)
   const [countdown, setCountdown] = useState(30)
   
   const [logs, setLogs] = useState<LogEntry[]>([])
-  const [currentStatuses, setCurrentStatuses] = useState<PortStatus[]>([])
+  const [currentStatuses, setCurrentStatuses] = useState<HostStatus[]>([])
   
   const monitorRef = useRef<NodeJS.Timeout | null>(null)
   const countdownRef = useRef<NodeJS.Timeout | null>(null)
-  const prevStatusesRef = useRef<Record<number, string>>({})
+  
+  // To track state changes: { "192.168.1.1-80": "CONNECTED" }
+  const prevStatusesRef = useRef<Record<string, string>>({})
   
   // Clean up timers
   useEffect(() => {
@@ -37,8 +46,9 @@ export default function MonitorPage() {
   }, [])
 
   const startMonitoring = () => {
-    if (!host) {
-      alert('กรุณาระบุ IP หรือ โดเมน')
+    const rawHosts = hostsText.split('\n').map(h => h.trim()).filter(h => h.length > 0)
+    if (rawHosts.length === 0) {
+      alert('กรุณาระบุ IP หรือ โดเมน อย่างน้อย 1 รายการ')
       return
     }
     const p1 = parseInt(port1)
@@ -50,18 +60,18 @@ export default function MonitorPage() {
     setIsMonitoring(true)
     setLogs([]) // Clear history on start
     prevStatusesRef.current = {}
-    setCurrentStatuses([])
+    setCurrentStatuses(rawHosts.map(h => ({ host: h, results: [] })))
     
     // First scan immediately
-    scanNow()
+    scanNow(rawHosts)
     
-    // Setup interval for every 30 seconds
-    setCountdown(30)
+    // Setup interval
+    setCountdown(intervalSecs)
     countdownRef.current = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
-          scanNow()
-          return 30
+          scanNow(rawHosts)
+          return intervalSecs
         }
         return prev - 1
       })
@@ -74,17 +84,19 @@ export default function MonitorPage() {
     if (monitorRef.current) clearInterval(monitorRef.current)
   }
 
-  const scanNow = async () => {
+  const scanNow = async (hostsToScan: string[]) => {
     const p1 = parseInt(port1)
     const p2 = parseInt(port2)
     const ports = [p1]
     if (!isNaN(p2) && p2 > 0) ports.push(p2)
+    
+    const targets = hostsToScan.map(h => ({ name: 'Monitor', host: h, ports }))
 
     try {
       const res = await fetch('/api/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targets: [{ name: 'MonitorTarget', host, ports }] })
+        body: JSON.stringify({ targets })
       })
 
       if (!res.body) throw new Error('No stream')
@@ -106,44 +118,53 @@ export default function MonitorPage() {
             const dataStr = event.split('\ndata: ')[1]
             if (dataStr) {
               const data = JSON.parse(dataStr)
-              handleScanResult(data.results)
+              handleScanResult(data.host, data.results)
             }
           }
         }
       }
     } catch (err) {
       // API error
-      ports.forEach(p => {
-        addLog(p, 'ERROR', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์สแกนได้')
+      hostsToScan.forEach(host => {
+        ports.forEach(p => {
+          addLog(host, p, 'ERROR', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์สแกนได้')
+        })
       })
     }
   }
 
-  const handleScanResult = (results: { port: number, status: string, latency: number | null }[]) => {
-    setCurrentStatuses(results)
+  const handleScanResult = (host: string, results: PortStatus[]) => {
+    setCurrentStatuses(prev => {
+      const copy = [...prev]
+      const idx = copy.findIndex(c => c.host === host)
+      if (idx !== -1) {
+        copy[idx] = { host, results }
+      }
+      return copy
+    })
     
     results.forEach(res => {
-      const prevStatus = prevStatusesRef.current[res.port]
+      const stateKey = `${host}-${res.port}`
+      const prevStatus = prevStatusesRef.current[stateKey]
       
-      // If it's the first time and it's closed, log it. Or if status changed from CONNECTED to CLOSED
       if (res.status !== 'CONNECTED') {
         if (!prevStatus || prevStatus === 'CONNECTED') {
-          addLog(res.port, res.status, `การเชื่อมต่อขาดหาย (Timeout/Closed)`)
+          addLog(host, res.port, res.status || 'ERROR', `การเชื่อมต่อขาดหาย (Timeout/Closed)`)
         }
       } else if (res.status === 'CONNECTED') {
         if (prevStatus && prevStatus !== 'CONNECTED') {
-           // It came back online
-           addLog(res.port, res.status, `เชื่อมต่อกลับมาได้แล้ว (${res.latency}ms)`)
+           addLog(host, res.port, res.status, `เชื่อมต่อกลับมาได้แล้ว (${res.latency}ms)`)
         }
       }
       
-      prevStatusesRef.current[res.port] = res.status
+      prevStatusesRef.current[stateKey] = res.status || 'ERROR'
     })
   }
 
-  const addLog = (port: number, status: string, message: string) => {
+  const addLog = (host: string, port: number, status: string, message: string) => {
     setLogs(prev => [{
       time: new Date(),
+      host,
       port,
       status,
       message
@@ -152,7 +173,7 @@ export default function MonitorPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans p-4 md:p-8">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <header className="mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
@@ -163,7 +184,7 @@ export default function MonitorPage() {
             <h1 className="text-2xl font-extrabold text-indigo-700 flex items-center gap-2">
               <Activity className="w-6 h-6" /> Port & IP Monitor
             </h1>
-            <p className="text-slate-500 text-sm mt-1">เครื่องมือตรวจสอบความเสถียร (Ping test ทุก 30 วินาที)</p>
+            <p className="text-slate-500 text-sm mt-1">เครื่องมือตรวจสอบความเสถียร (Ping test อัตโนมัติแบบกลุ่ม)</p>
           </div>
           
           <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
@@ -188,7 +209,7 @@ export default function MonitorPage() {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Controls */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-fit">
             <h2 className="text-lg font-bold mb-4 flex items-center gap-2 border-b pb-3 border-slate-100">
@@ -197,14 +218,14 @@ export default function MonitorPage() {
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">IP Address / Domain</label>
-                <input 
-                  type="text" 
-                  value={host}
-                  onChange={e => setHost(e.target.value)}
+                <label className="block text-sm font-bold text-slate-700 mb-1">IP Address / Domain (หลายรายการได้)</label>
+                <textarea 
+                  rows={4}
+                  value={hostsText}
+                  onChange={e => setHostsText(e.target.value)}
                   disabled={isMonitoring}
-                  placeholder="เช่น 118.175.x.x"
-                  className="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono disabled:opacity-60"
+                  placeholder="เช่น:&#10;118.175.x.1&#10;118.175.x.2"
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono disabled:opacity-60 resize-none"
                 />
               </div>
               
@@ -231,6 +252,22 @@ export default function MonitorPage() {
                   />
                 </div>
               </div>
+              
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1 flex items-center gap-1.5"><Settings2 className="w-4 h-4" /> รอบสแกนทุกๆ (วินาที)</label>
+                <select 
+                  value={intervalSecs}
+                  onChange={e => setIntervalSecs(parseInt(e.target.value))}
+                  disabled={isMonitoring}
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 font-bold text-slate-700"
+                >
+                  <option value={5}>5 วินาที</option>
+                  <option value={10}>10 วินาที</option>
+                  <option value={15}>15 วินาที</option>
+                  <option value={30}>30 วินาที</option>
+                  <option value={60}>60 วินาที</option>
+                </select>
+              </div>
 
               <div className="pt-4 border-t border-slate-100">
                 {isMonitoring ? (
@@ -253,26 +290,39 @@ export default function MonitorPage() {
           </div>
 
           {/* Status & History */}
-          <div className="md:col-span-2 flex flex-col gap-6">
+          <div className="lg:col-span-2 flex flex-col gap-6">
             
-            {/* Live Status Cards */}
+            {/* Live Status Cards (Scrollable if many) */}
             {currentStatuses.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {currentStatuses.map(s => (
-                  <div key={s.port} className={`p-4 rounded-2xl border ${s.status === 'CONNECTED' ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}`}>
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="font-bold text-sm text-slate-500">Port {s.port}</div>
-                      {s.status === 'CONNECTED' ? (
-                        <CheckCircle className="w-6 h-6 text-emerald-500" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[400px] overflow-y-auto pr-2 pb-2">
+                {currentStatuses.map((hs, i) => (
+                  <div key={i} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                    <div className="px-4 py-2 bg-slate-100 border-b border-slate-200 font-bold text-slate-700 font-mono text-sm truncate">
+                      {hs.host}
+                    </div>
+                    <div className="p-4 grid grid-cols-2 gap-2 flex-1">
+                      {hs.results.length === 0 ? (
+                        <div className="col-span-2 text-center text-slate-400 text-sm py-4">กำลังโหลด...</div>
                       ) : (
-                        <AlertTriangle className="w-6 h-6 text-rose-500" />
+                        hs.results.map(s => (
+                          <div key={s.port} className={`p-3 rounded-xl border ${s.status === 'CONNECTED' ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}`}>
+                            <div className="flex justify-between items-start mb-1">
+                              <div className="font-bold text-xs text-slate-500">Port {s.port}</div>
+                              {s.status === 'CONNECTED' ? (
+                                <CheckCircle className="w-4 h-4 text-emerald-500" />
+                              ) : (
+                                <AlertTriangle className="w-4 h-4 text-rose-500" />
+                              )}
+                            </div>
+                            <div className={`text-base font-extrabold ${s.status === 'CONNECTED' ? 'text-emerald-700' : 'text-rose-700'}`}>
+                              {s.status === 'CONNECTED' ? 'ONLINE' : 'OFFLINE'}
+                            </div>
+                            <div className="text-[10px] font-semibold mt-1 opacity-70 truncate">
+                              {s.status === 'CONNECTED' ? `${s.latency} ms` : 'Timeout'}
+                            </div>
+                          </div>
+                        ))
                       )}
-                    </div>
-                    <div className={`text-xl font-extrabold ${s.status === 'CONNECTED' ? 'text-emerald-700' : 'text-rose-700'}`}>
-                      {s.status === 'CONNECTED' ? 'ONLINE' : 'OFFLINE'}
-                    </div>
-                    <div className="text-xs font-semibold mt-1 opacity-70">
-                      {s.status === 'CONNECTED' ? `Latency: ${s.latency} ms` : 'ไม่สามารถเชื่อมต่อได้ (Timeout)'}
                     </div>
                   </div>
                 ))}
@@ -280,12 +330,12 @@ export default function MonitorPage() {
             )}
 
             {/* Logs */}
-            <div className="bg-white flex-1 rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col min-h-[400px]">
+            <div className="bg-white flex-1 rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col min-h-[300px]">
               <div className="p-4 bg-slate-800 text-white flex justify-between items-center">
                 <h3 className="font-bold">ประวัติการเชื่อมต่อหลุด (Disconnect History)</h3>
                 <span className="text-xs bg-slate-700 px-2 py-1 rounded font-mono">{logs.length} events</span>
               </div>
-              <div className="p-0 overflow-y-auto max-h-[500px]">
+              <div className="p-0 overflow-y-auto max-h-[400px]">
                 {logs.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-48 text-slate-400">
                     <CheckCircle className="w-10 h-10 mb-2 opacity-50" />
@@ -305,7 +355,9 @@ export default function MonitorPage() {
                               )}
                             </div>
                             <div>
-                              <div className="font-bold text-slate-800">Port {log.port}</div>
+                              <div className="font-bold text-slate-800">
+                                {log.host} <span className="text-slate-500 text-sm">(Port {log.port})</span>
+                              </div>
                               <div className="text-sm font-semibold text-slate-600">{log.message}</div>
                             </div>
                           </div>
