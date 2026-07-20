@@ -290,6 +290,9 @@ export default function Home() {
               <a href="/IP-Manual.html" target="_blank" className="text-xs font-bold px-3.5 py-2 rounded-full flex items-center gap-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 transition shadow-sm border border-blue-100">
                 <FileText className="w-4 h-4" /> คู่มือตั้งค่าสาขา
               </a>
+              <Link href="/monitor" className="text-xs font-bold px-3.5 py-2 rounded-full flex items-center gap-1.5 bg-purple-50 text-purple-700 hover:bg-purple-100 transition shadow-sm border border-purple-100">
+                <Timer className="w-4 h-4" /> เครื่องมือทดสอบ
+              </Link>
               <span className={`text-xs font-bold px-3.5 py-2 rounded-full flex items-center gap-1.5 shadow-sm border ${isConnected ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-700 border-rose-100'}`}>
                 <Database className="w-4 h-4" /> {isConnected ? 'Connected' : 'Disconnected'}
               </span>
