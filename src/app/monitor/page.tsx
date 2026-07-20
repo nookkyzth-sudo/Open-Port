@@ -41,6 +41,7 @@ export default function MonitorPage() {
   
   const [intervalSecs, setIntervalSecs] = useState(30)
   const [isMonitoring, setIsMonitoring] = useState(false)
+  const [startTime, setStartTime] = useState<Date | null>(null)
   const [countdown, setCountdown] = useState(30)
   
   const [logs, setLogs] = useState<LogEntry[]>([])
@@ -80,6 +81,7 @@ export default function MonitorPage() {
     }
     
     setIsMonitoring(true)
+    setStartTime(new Date())
     setLogs([]) // Clear history on start
     prevStatusesRef.current = {}
     
@@ -114,6 +116,7 @@ export default function MonitorPage() {
 
   const stopMonitoring = () => {
     setIsMonitoring(false)
+    setStartTime(null)
     if (countdownRef.current) clearInterval(countdownRef.current)
     if (monitorRef.current) clearInterval(monitorRef.current)
   }
@@ -225,6 +228,14 @@ export default function MonitorPage() {
                 )}
               </div>
             </div>
+            {isMonitoring && startTime && (
+              <div className="text-center border-l pl-4 border-slate-200">
+                <div className="text-xs text-slate-500 font-bold mb-1 uppercase tracking-wider">เริ่มทดสอบเมื่อ</div>
+                <div className="text-sm font-bold text-slate-700 flex items-center justify-center gap-1">
+                  {startTime.toLocaleTimeString('th-TH')}
+                </div>
+              </div>
+            )}
             {isMonitoring && (
               <div className="text-center border-l pl-4 border-slate-200">
                 <div className="text-xs text-slate-500 font-bold mb-1 uppercase tracking-wider">อัปเดตใน</div>
