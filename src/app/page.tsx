@@ -279,6 +279,9 @@ export default function Home() {
             <p className="text-slate-500 mt-1">เครื่องมือตรวจสอบความปลอดภัยพอร์ตแบบกลุ่ม (สำหรับ Public IP)</p>
           </div>
           <div className="mt-4 md:mt-0 flex gap-2 justify-center flex-wrap">
+            <a href="/IP-Manual.html" target="_blank" className="text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1 bg-blue-50 text-blue-700 hover:bg-blue-100 transition border border-blue-100">
+              <FileText className="w-3.5 h-3.5" /> คู่มือตั้งค่าสาขา
+            </a>
             <span className={`text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1 ${isConnected ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
               <Database className="w-3.5 h-3.5" /> {isConnected ? 'Database Connected' : 'Disconnected'}
             </span>
