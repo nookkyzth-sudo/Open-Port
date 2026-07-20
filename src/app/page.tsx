@@ -270,33 +270,44 @@ export default function Home() {
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* Header */}
-        <header className="mb-8 text-center md:text-left md:flex justify-between items-center border-b border-slate-200 pb-6">
-          <div>
-            <h1 className="text-3xl font-extrabold text-indigo-700 flex items-center justify-center md:justify-start gap-2">
-              <ShieldAlert className="w-8 h-8 text-indigo-600" />
-              Bulk Port Scanner <span className="text-sm font-bold bg-indigo-100 text-indigo-800 px-2.5 py-0.5 rounded-full">REAL-TIME (Vercel)</span>
+        <header className="mb-8 flex flex-col xl:flex-row justify-between items-center xl:items-end gap-6 border-b border-slate-200 pb-6 text-center xl:text-left">
+          <div className="flex flex-col items-center xl:items-start">
+            <h1 className="text-3xl font-extrabold text-indigo-700 flex flex-wrap items-center justify-center xl:justify-start gap-2.5">
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="w-8 h-8 text-indigo-600 shrink-0" />
+                <span>Bulk Port Scanner</span>
+              </div>
+              <span className="text-xs font-bold bg-indigo-100 text-indigo-800 px-2.5 py-1 rounded-full whitespace-nowrap tracking-wide">
+                REAL-TIME (Vercel)
+              </span>
             </h1>
-            <p className="text-slate-500 mt-1">เครื่องมือตรวจสอบความปลอดภัยพอร์ตแบบกลุ่ม (สำหรับ Public IP)</p>
+            <p className="text-slate-500 mt-2 font-medium">เครื่องมือตรวจสอบความปลอดภัยพอร์ตแบบกลุ่ม (สำหรับ Public IP)</p>
           </div>
-          <div className="mt-4 md:mt-0 flex gap-2 justify-center flex-wrap">
-            <a href="/IP-Manual.html" target="_blank" className="text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1 bg-blue-50 text-blue-700 hover:bg-blue-100 transition border border-blue-100">
-              <FileText className="w-3.5 h-3.5" /> คู่มือตั้งค่าสาขา
-            </a>
-            <span className={`text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1 ${isConnected ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
-              <Database className="w-3.5 h-3.5" /> {isConnected ? 'Database Connected' : 'Disconnected'}
-            </span>
+
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto justify-center">
+            {/* Status & Manual */}
+            <div className="flex flex-wrap justify-center items-center gap-2">
+              <a href="/IP-Manual.html" target="_blank" className="text-xs font-bold px-3.5 py-2 rounded-full flex items-center gap-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 transition shadow-sm border border-blue-100">
+                <FileText className="w-4 h-4" /> คู่มือตั้งค่าสาขา
+              </a>
+              <span className={`text-xs font-bold px-3.5 py-2 rounded-full flex items-center gap-1.5 shadow-sm border ${isConnected ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-700 border-rose-100'}`}>
+                <Database className="w-4 h-4" /> {isConnected ? 'Connected' : 'Disconnected'}
+              </span>
+            </div>
+            
+            {/* User Actions */}
             {currentUser && (
-              <>
-                <Link href="/bg-scanner" className="text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition border border-indigo-100">
-                  <Activity className="w-3.5 h-3.5" /> Dashboard หลังบ้าน
+              <div className="flex flex-wrap justify-center items-center gap-2 sm:border-l-2 sm:border-slate-200 sm:pl-3 pt-3 sm:pt-0 border-t-2 sm:border-t-0 border-slate-100 w-full sm:w-auto mt-2 sm:mt-0">
+                <Link href="/bg-scanner" className="text-xs font-bold px-3.5 py-2 rounded-full flex items-center gap-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition shadow-sm border border-indigo-100">
+                  <Activity className="w-4 h-4" /> ระบบหลังบ้าน
                 </Link>
-                <Link href="/profile" className="text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1 bg-slate-100 text-slate-700 hover:bg-slate-200 transition border border-slate-200">
-                  <User className="w-3.5 h-3.5" /> {currentUser.username}
+                <Link href="/profile" className="text-xs font-bold px-3.5 py-2 rounded-full flex items-center gap-1.5 bg-slate-50 text-slate-700 hover:bg-slate-100 transition shadow-sm border border-slate-200">
+                  <User className="w-4 h-4" /> {currentUser.username}
                 </Link>
-                <button onClick={() => logout()} className="text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 transition border border-rose-100">
-                  <LogOut className="w-3.5 h-3.5" /> ออกจากระบบ
+                <button onClick={() => logout()} className="text-xs font-bold px-3.5 py-2 rounded-full flex items-center gap-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 transition shadow-sm border border-rose-100">
+                  <LogOut className="w-4 h-4" /> ออกจากระบบ
                 </button>
-              </>
+              </div>
             )}
           </div>
         </header>
