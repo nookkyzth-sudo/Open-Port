@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>คู่มือติดตั้งระบบอัปเดต IP อัตโนมัติ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f7f6;
+        }
+        .container {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #2980b9;
+            margin-top: 40px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .step {
+            background-color: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border-radius: 0 8px 8px 0;
+        }
+        .code-block {
+            background-color: #282c34;
+            color: #abb2bf;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Consolas', monospace;
+            font-size: 14px;
+            margin: 15px 0;
+            white-space: pre-wrap;
+        }
+        .important {
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .btn-copy {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Kanit', sans-serif;
+            font-size: 14px;
+            margin-bottom: 10px;
+            transition: background 0.3s;
+        }
+        .btn-copy:hover {
+            background-color: #2980b9;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📖 คู่มือติดตั้งระบบแจ้ง IP กลับส่วนกลาง<br><span style="font-size: 18px; color: #7f8c8d;">(รองรับ Windows 10 และ 11)</span></h1>
+
+        <h2>⚙️ ส่วนที่ 1: การสร้างไฟล์ตั้งค่า</h2>
+        
+        <div class="step">
+            <strong>1. สร้างไฟล์สคริปต์ที่หน้า Desktop</strong><br>
+            คลิ๊กขวาที่พื้นที่ว่างบน Desktop เลือก <strong>New &gt; Text Document</strong>
+        </div>
+
+        <div class="step">
+            <strong>2. นำโค้ดไปวางในไฟล์</strong><br>
+            เปิดไฟล์ขึ้นมา กดปุ่ม Copy ด้านล่าง แล้วนำโค้ดไปวาง
+            
+            <br><br>
+            <button class="btn-copy" onclick="copyCode()">📋 คัดลอกโค้ด</button>
+            <div class="code-block" id="scriptCode">
+$DeviceName = "ชื่อสาขาของคุณที่นี่"
+$SupabaseUrl = "https://xyzhvqtjghwkbcmrpgxg.supabase.co"
+$SupabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5emh2cXRqZ2h3a2JjbXJwZ3hnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDA2NjI3MCwiZXhwIjoyMDk5NjQyMjcwfQ.Mlq0tlO0oilEYKiKjkWKTNkllLxzaIYJJum6bQo2DrQ"
+$TableName = "Device"
+$LogFile = "$env:TEMP\last_public_ip_${DeviceName}.txt"
+
+try {
+    $CurrentIP = (Invoke-RestMethod -Uri 'https://api.ipify.org' -UseBasicParsing).Trim()
+    $LastIP = ""
+    if (Test-Path $LogFile) { $LastIP = Get-Content $LogFile }
+
+    if ($CurrentIP -ne $LastIP) {
+        $Headers = @{
+            "apikey" = $SupabaseKey
+            "Authorization" = "Bearer $SupabaseKey"
+            "Content-Type" = "application/json"
+            "Prefer" = "return=minimal"
+        }
+        $Body = @{ host = $CurrentIP } | ConvertTo-Json
+        $Endpoint = "$SupabaseUrl/rest/v1/${TableName}?name=eq.${DeviceName}"
+        Invoke-RestMethod -Uri $Endpoint -Method Patch -Headers $Headers -Body $Body -UseBasicParsing
+        $CurrentIP | Out-File -FilePath $LogFile -Force
+    }
+} catch {
+    Write-Error $_
+}
+            </div>
+            
+            <div class="important">
+                <strong>จุดที่ต้องแก้:</strong> ในบรรทัดแรก ให้เปลี่ยนคำว่า <code>"ชื่อสาขาของคุณที่นี่"</code> เป็นชื่อสาขาให้ตรงกับในระบบ (ตัวพิมพ์เล็ก-ใหญ่ต้องเป๊ะ) เช่น <code>"PANG"</code>
+            </div>
+        </div>
+
+        <div class="step">
+            <strong>3. บันทึกไฟล์ (Save)</strong><br>
+            - ไปที่เมนู File &gt; Save As...<br>
+            - ช่อง File name พิมพ์ว่า <strong>update_ip.ps1</strong><br>
+            - ช่อง Save as type เลือกเป็น <strong>All Files (*.*)</strong><br>
+            - กดปุ่ม Save จะได้ไอคอนสีฟ้าๆ ไว้ที่หน้าจอ
+        </div>
+
+        <hr style="margin: 40px 0; border: 0; border-top: 1px solid #eee;">
+
+        <h2>🚀 ส่วนที่ 2: ตั้งค่าให้รันอัตโนมัติ (Task Scheduler)</h2>
+        
+        <p>ขั้นตอนนี้จะช่วยให้คอมพิวเตอร์รันสคริปต์อัปเดต IP ให้เองทุกๆ 10 นาที โดยไม่โชว์หน้าต่างรบกวนการทำงานครับ</p>
+
+        <div class="step">
+            <strong>1. เปิด Task Scheduler</strong><br>
+            กดปุ่ม Start (รูป Windows) พิมพ์ค้นหาคำว่า <code>Task Scheduler</code> แล้วเปิดขึ้นมา
+        </div>
+
+        <div class="step">
+            <strong>2. สร้างงานใหม่ (Create Task)</strong><br>
+            ที่เมนูด้านขวามือ ให้คลิ๊กที่ <strong>Create Task...</strong>
+        </div>
+
+        <div class="step">
+            <strong>3. ตั้งค่าหน้า General (หน้าแรก)</strong><br>
+            - <strong>Name:</strong> พิมพ์ว่า <code>Auto Update IP</code><br>
+            - <strong>Security options:</strong> เลือก <code>Run only when user is logged on</code> (สำหรับเครื่องที่ไม่มีรหัสผ่าน)<br>
+            - ติ๊กถูกที่ <strong>Run with highest privileges</strong><br>
+            - ติ๊กถูกที่ <strong>Hidden</strong> (มุมซ้ายล่างสุด)
+        </div>
+
+        <div class="step">
+            <strong>4. ตั้งค่าเวลาหน้า Triggers (ตั้งเวลาทำงาน)</strong><br>
+            - กดแท็บ <strong>Triggers</strong> ด้านบน &gt; กดปุ่ม <strong>New...</strong><br>
+            - <strong>Begin the task:</strong> เลือก <code>At startup</code><br>
+            - ติ๊กถูกช่อง <strong>Repeat task every:</strong> แล้วพิมพ์ <code>10 minutes</code><br>
+            - <strong>for a duration of:</strong> เลือก <code>Indefinitely</code><br>
+            - กด OK
+        </div>
+
+        <div class="step">
+            <strong>5. ใส่คำสั่งในหน้า Actions (ตั้งคำสั่ง)</strong><br>
+            - กดแท็บ <strong>Actions</strong> ด้านบน &gt; กดปุ่ม <strong>New...</strong><br>
+            - <strong>Program/script:</strong> พิมพ์ <code>powershell.exe</code><br>
+            - <strong>Add arguments:</strong> ให้ก๊อปปี้ข้อความด้านล่างนี้ไปวาง:
+            <div class="code-block" style="padding: 10px; margin: 10px 0;">
+-ExecutionPolicy Bypass -WindowStyle Hidden -File "C:\Users\Admin\Desktop\update_ip.ps1"
+            </div>
+            <span style="color: #e74c3c;">*อย่าลืมเปลี่ยน C:\Users\Admin\Desktop\update_ip.ps1 เป็นที่อยู่ไฟล์จริงๆ ของเครื่องคุณ</span><br>
+            - กด OK
+        </div>
+
+        <div class="step">
+            <strong>6. บันทึกและเริ่มใช้งาน</strong><br>
+            กด <strong>OK</strong> หน้าต่างสุดท้าย เป็นอันเสร็จสมบูรณ์! ระบบจะแอบเช็ค IP ให้ทุก 10 นาทีครับ
+        </div>
+
+        <hr style="margin: 40px 0; border: 0; border-top: 1px solid #eee;">
+
+        <h2 style="color: #e74c3c;">🛑 ส่วนที่ 3: วิธีการปิดการทำงาน หรือลบสคริปต์ทิ้ง</h2>
+
+        <div class="step">
+            <strong>1. เปิด Task Scheduler</strong> แล้วคลิ๊กเมนู <strong>Task Scheduler Library</strong> (ฝั่งซ้ายมือ)
+        </div>
+
+        <div class="step">
+            <strong>2. หาชื่อ Auto Update IP</strong><br>
+            หาชื่อที่เราตั้งไว้ในรายชื่อตรงกลางจอ แล้ว <strong>คลิ๊กขวา</strong>
+        </div>
+
+        <div class="step">
+            <strong>3. เลือกคำสั่งที่ต้องการ:</strong><br>
+            - เลือก <strong>Disable</strong> = ปิดการทำงานชั่วคราว (สคริปต์หยุดทำงาน เผื่อวันหลังอยากเปิดใหม่)<br>
+            - เลือก <strong>Delete</strong> = ลบทิ้งถาวร 
+        </div>
+
+        <div class="footer">
+            จัดทำโดยทีมพัฒนาระบบ | ระบบอัปเดต IP อัตโนมัติ (Supabase Integration)
+        </div>
+    </div>
+
+    <script>
+        function copyCode() {
+            const codeText = document.getElementById("scriptCode").textContent.trim();
+            navigator.clipboard.writeText(codeText).then(() => {
+                const btn = document.querySelector(".btn-copy");
+                btn.innerText = "✅ คัดลอกสำเร็จแล้ว!";
+                btn.style.backgroundColor = "#27ae60";
+                setTimeout(() => {
+                    btn.innerText = "📋 คัดลอกโค้ด";
+                    btn.style.backgroundColor = "#3498db";
+                }, 3000);
+            });
+        }
+    </script>
+</body>
+</html>
