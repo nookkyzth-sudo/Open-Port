@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Activity, PlayCircle, Square, AlertTriangle, CheckCircle, Clock, ArrowLeft, RefreshCw, ServerCrash, Settings2 } from 'lucide-react'
+import { Activity, PlayCircle, Square, AlertTriangle, CheckCircle, Clock, ArrowLeft, RefreshCw, ServerCrash, Settings2, FileText } from 'lucide-react'
 import Link from 'next/link'
 
 type LogEntry = {
@@ -210,6 +210,29 @@ export default function MonitorPage() {
     }, ...prev])
   }
 
+  const exportLogsToTxt = () => {
+    if (logs.length === 0) return
+    let content = '=== ประวัติการเชื่อมต่อหลุด (Disconnect History) ===\n\n'
+    
+    logs.forEach(log => {
+      const timeStr = log.time.toLocaleString('th-TH')
+      content += `[${timeStr}] ${log.host} (Port ${log.port}) - [${log.status}] ${log.message}\n`
+    })
+    
+    const d = new Date()
+    const dateStr = `${d.getDate()}-${d.getMonth() + 1}-${d.getFullYear() + 543}`
+    
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `disconnect_log_${dateStr}.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
@@ -386,8 +409,13 @@ export default function MonitorPage() {
             {/* Logs */}
             <div className="bg-white flex-1 rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col min-h-[300px]">
               <div className="p-4 bg-slate-800 text-white flex justify-between items-center">
-                <h3 className="font-bold">ประวัติการเชื่อมต่อหลุด (Disconnect History)</h3>
-                <span className="text-xs bg-slate-700 px-2 py-1 rounded font-mono">{logs.length} events</span>
+                <div className="flex items-center gap-3">
+                  <h3 className="font-bold">ประวัติการเชื่อมต่อหลุด (Disconnect History)</h3>
+                  <span className="text-xs bg-slate-700 px-2 py-1 rounded font-mono">{logs.length} events</span>
+                </div>
+                <button onClick={exportLogsToTxt} disabled={logs.length === 0} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg text-xs transition border border-slate-600 shadow-sm">
+                  <FileText className="w-3.5 h-3.5" /> Export (.txt)
+                </button>
               </div>
               <div className="p-0 overflow-y-auto max-h-[400px]">
                 {logs.length === 0 ? (
