@@ -109,24 +109,38 @@ $TableName = "Device"
 $LogFile = "$env:TEMP\last_public_ip_${DeviceName}.txt"
 
 try {
+    # บังคับใช้ TLS 1.2 เพื่อป้องกันปัญหาบน Windows เก่าที่เชื่อมต่อ API ไม่ได้
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    
     $CurrentIP = (Invoke-RestMethod -Uri 'https://api.ipify.org' -UseBasicParsing).Trim()
     $LastIP = ""
     if (Test-Path $LogFile) { $LastIP = Get-Content $LogFile }
 
     if ($CurrentIP -ne $LastIP) {
+        Write-Host "IP changed: $LastIP -> $CurrentIP"
+        
+        # เพิ่มการดึงเวลาปัจจุบันส่งไปบันทึกด้วย เพื่อให้หน้าเว็บขึ้นแถบสีเขียว
+        $CurrentTime = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
+
         $Headers = @{
             "apikey" = $SupabaseKey
             "Authorization" = "Bearer $SupabaseKey"
             "Content-Type" = "application/json"
             "Prefer" = "return=minimal"
         }
-        $Body = @{ host = $CurrentIP } | ConvertTo-Json
+        
+        $Body = @{ host = $CurrentIP; ipUpdatedAt = $CurrentTime } | ConvertTo-Json -Depth 10
         $Endpoint = "$SupabaseUrl/rest/v1/${TableName}?name=eq.${DeviceName}"
+        
         Invoke-RestMethod -Uri $Endpoint -Method Patch -Headers $Headers -Body $Body -UseBasicParsing
         $CurrentIP | Out-File -FilePath $LogFile -Force
+        
+        Write-Host "✅ Update success! ($CurrentIP)"
+    } else {
+        Write-Host "IP unchanged ($CurrentIP)"
     }
 } catch {
-    Write-Error $_
+    Write-Error "❌ Error occurred: $_"
 }
             </div>
             
@@ -178,8 +192,9 @@ try {
         <div class="step">
             <strong>4. ตั้งค่าเวลาหน้า Triggers (ตั้งเวลาทำงาน)</strong><br>
             - กดแท็บ <strong>Triggers</strong> ด้านบน &gt; กดปุ่ม <strong>New...</strong><br>
-            - <strong>Begin the task:</strong> เลือก <code>At startup</code><br>
-            - ติ๊กถูกช่อง <strong>Repeat task every:</strong> แล้วพิมพ์ <code>10 minutes</code><br>
+            - <strong>Begin the task:</strong> เลือก <code>On a schedule</code> (ตั้งเวลา) หรือ <code>At startup</code><br>
+            - กรณีเลือก On a schedule ให้ตั้งค่าด้านซ้ายเป็น <strong>Daily</strong> (ทุกวัน)<br>
+            - <strong>สำคัญที่สุด:</strong> ติ๊กถูกช่อง <strong>Repeat task every:</strong> แล้วพิมพ์ <code>10 minutes</code><br>
             - <strong>for a duration of:</strong> เลือก <code>Indefinitely</code><br>
             - กด OK
         </div>
