@@ -398,13 +398,22 @@ export default function Home() {
                               placeholder="e.g. 192.168.1.100"
                               className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 font-mono text-slate-900 placeholder-slate-500 disabled:bg-slate-100 disabled:text-slate-500"
                             />
-                            {d.ipUpdatedAt && (
-                              <span className="text-[10px] text-slate-500/80 italic px-1">
-                                อัปเดต: {new Date(d.ipUpdatedAt).toLocaleString('th-TH', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })} น.
-                                {' '}
-                                (ใช้มา {Math.floor((new Date().getTime() - new Date(d.ipUpdatedAt).getTime()) / (1000 * 60 * 60 * 24))} วัน)
-                              </span>
-                            )}
+                            {d.ipUpdatedAt && (() => {
+                              const updatedAt = new Date(d.ipUpdatedAt!);
+                              const diffTime = new Date().getTime() - updatedAt.getTime();
+                              const diffDays = Math.floor(Math.abs(diffTime) / (1000 * 60 * 60 * 24));
+                              const isRecent = diffTime >= 0 ? diffTime <= 24 * 60 * 60 * 1000 : Math.abs(diffTime) <= 24 * 60 * 60 * 1000; // Handle slight future times from DB
+                              return (
+                                <span className={`text-[10px] px-2 py-0.5 mt-1 rounded-md flex items-center gap-1.5 w-fit ${isRecent ? 'bg-emerald-100 text-emerald-700 font-bold border border-emerald-200' : 'text-slate-500/80 italic'}`}>
+                                  {isRecent && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_4px_rgba(16,185,129,0.8)] animate-pulse"></span>}
+                                  <span>
+                                    อัปเดต: {updatedAt.toLocaleString('th-TH', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })} น.
+                                    {' '}
+                                    (ใช้มา {diffDays} วัน)
+                                  </span>
+                                </span>
+                              );
+                            })()}
                           </div>
                         </td>
                         <td className="px-4 py-3">
