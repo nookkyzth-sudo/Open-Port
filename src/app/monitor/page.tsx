@@ -244,7 +244,7 @@ export default function MonitorPage() {
               </Link>
             </div>
             <h1 className="text-2xl font-extrabold text-indigo-700 flex items-center gap-2">
-              <Activity className="w-6 h-6" /> Port & IP Monitor
+              <img src="/logo.png" alt="Logo" className="w-8 h-8 shrink-0 object-contain drop-shadow-sm" /> Port & IP Monitor
             </h1>
             <p className="text-slate-500 text-sm mt-1">เครื่องมือตรวจสอบความเสถียร (Ping test อัตโนมัติแบบกลุ่ม)</p>
           </div>

@@ -32,7 +32,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
         <div className="p-8 text-center bg-slate-900 text-white">
-          <ShieldAlert className="w-12 h-12 mx-auto text-indigo-400 mb-3" />
+          <img src="/logo.png" alt="Logo" className="w-16 h-16 mx-auto mb-3 object-contain drop-shadow-md" />
           <h1 className="text-2xl font-bold">เข้าสู่ระบบ</h1>
           <p className="text-slate-400 text-sm mt-1">Open Port Scanner System</p>
         </div>

@@ -54,7 +54,7 @@ export default function BgScannerPage() {
             </Link>
             <div>
               <h1 className="text-2xl font-extrabold text-slate-800 flex items-center gap-2">
-                <Activity className="w-6 h-6 text-emerald-600" />
+                <img src="/logo.png" alt="Logo" className="w-8 h-8 shrink-0 object-contain drop-shadow-sm" />
                 Background Scanner Dashboard
               </h1>
               <div className="flex items-center gap-3 mt-1">

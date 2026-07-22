@@ -274,7 +274,7 @@ export default function Home() {
           <div className="flex flex-col items-center xl:items-start">
             <h1 className="text-3xl font-extrabold text-indigo-700 flex flex-wrap items-center justify-center xl:justify-start gap-2.5">
               <div className="flex items-center gap-2">
-                <ShieldAlert className="w-8 h-8 text-indigo-600 shrink-0" />
+                <img src="/logo.png" alt="Logo" className="w-10 h-10 shrink-0 object-contain drop-shadow-md" />
                 <span>Open Port Scanner</span>
               </div>
               <span className="text-xs font-bold bg-indigo-100 text-indigo-800 px-2.5 py-1 rounded-full whitespace-nowrap tracking-wide">
@@ -402,7 +402,7 @@ export default function Home() {
                               const updatedAt = new Date(d.ipUpdatedAt!);
                               const diffTime = new Date().getTime() - updatedAt.getTime();
                               const diffDays = Math.floor(Math.abs(diffTime) / (1000 * 60 * 60 * 24));
-                              const isRecent = diffTime >= 0 ? diffTime <= 24 * 60 * 60 * 1000 : Math.abs(diffTime) <= 24 * 60 * 60 * 1000; // Handle slight future times from DB
+                              const isRecent = diffTime >= 0 ? diffTime <= 2 * 60 * 60 * 1000 : Math.abs(diffTime) <= 2 * 60 * 60 * 1000; // Handle slight future times from DB
                               return (
                                 <span className={`text-[10px] px-2 py-0.5 mt-1 rounded-md flex items-center gap-1.5 w-fit ${isRecent ? 'bg-emerald-100 text-emerald-700 font-bold border border-emerald-200' : 'text-slate-500/80 italic'}`}>
                                   {isRecent && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_4px_rgba(16,185,129,0.8)] animate-pulse"></span>}
