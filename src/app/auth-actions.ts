@@ -27,10 +27,10 @@ export async function register(formData: FormData) {
 
     const hashedPassword = await hashPassword(password)
     const user = await prisma.user.create({
-      data: { username, email, password: hashedPassword }
+      data: { username, email, password: hashedPassword, role: 'EDITOR' }
     })
 
-    const { session, expires } = await createSession({ userId: user.id, username: user.username })
+    const { session, expires } = await createSession({ userId: user.id, username: user.username, role: user.role })
     
     // In Next.js 15, cookies() is async
     const cookieStore = await cookies()
@@ -66,8 +66,15 @@ export async function login(formData: FormData) {
     if (!isValid) {
       return { error: 'รหัสผ่านไม่ถูกต้อง' }
     }
+    
+    // Auto upgrade nook.cctv
+    let userRole = user.role
+    if (user.username === 'nook.cctv' && userRole !== 'ADMIN') {
+      await prisma.user.update({ where: { id: user.id }, data: { role: 'ADMIN' } })
+      userRole = 'ADMIN'
+    }
 
-    const { session, expires } = await createSession({ userId: user.id, username: user.username })
+    const { session, expires } = await createSession({ userId: user.id, username: user.username, role: userRole })
     
     const cookieStore = await cookies()
     cookieStore.set('auth-session', session, { expires, httpOnly: true, secure: process.env.NODE_ENV === 'production' })
@@ -124,5 +131,5 @@ export async function getCurrentUser() {
   const payload = await verifySession(sessionCookie)
   if (!payload || !payload.userId) return null
   
-  return payload
+  return payload as { userId: string, username: string, role: string, exp: number, iat: number }
 }

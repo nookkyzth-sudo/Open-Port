@@ -234,25 +234,25 @@ export default function MonitorPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans p-4 md:p-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-sans p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         <header className="mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <Link href="/" className="text-slate-500 hover:text-indigo-600 transition flex items-center gap-1 text-sm bg-white border border-slate-200 px-3 py-1.5 rounded-full shadow-sm">
+              <Link href="/" className="text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition flex items-center gap-1 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-full shadow-sm">
                 <ArrowLeft className="w-4 h-4" /> กลับหน้าแรก
               </Link>
             </div>
-            <h1 className="text-2xl font-extrabold text-indigo-700 flex items-center gap-2">
+            <h1 className="text-2xl font-extrabold text-indigo-700 dark:text-indigo-400 flex items-center gap-2">
               <img src="/logo.png" alt="Logo" className="w-8 h-8 shrink-0 object-contain drop-shadow-sm" /> Port & IP Monitor
             </h1>
-            <p className="text-slate-500 text-sm mt-1">เครื่องมือตรวจสอบความเสถียร (Ping test อัตโนมัติแบบกลุ่ม)</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">เครื่องมือตรวจสอบความเสถียร (Ping test อัตโนมัติแบบกลุ่ม)</p>
           </div>
           
-          <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+          <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-4">
             <div className="text-center">
-              <div className="text-xs text-slate-500 font-bold mb-1 uppercase tracking-wider">สถานะ</div>
-              <div className={`text-sm font-bold flex items-center justify-center gap-1.5 ${isMonitoring ? 'text-emerald-600' : 'text-slate-400'}`}>
+              <div className="text-xs text-slate-500 dark:text-slate-400 font-bold mb-1 uppercase tracking-wider">สถานะ</div>
+              <div className={`text-sm font-bold flex items-center justify-center gap-1.5 ${isMonitoring ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}`}>
                 {isMonitoring ? (
                   <><RefreshCw className="w-4 h-4 animate-spin" /> กำลังตรวจสอบ</>
                 ) : (
@@ -261,17 +261,17 @@ export default function MonitorPage() {
               </div>
             </div>
             {isMonitoring && startTime && (
-              <div className="text-center border-l pl-4 border-slate-200">
-                <div className="text-xs text-slate-500 font-bold mb-1 uppercase tracking-wider">เริ่มทดสอบเมื่อ</div>
-                <div className="text-sm font-bold text-slate-700 flex items-center justify-center gap-1">
+              <div className="text-center border-l pl-4 border-slate-200 dark:border-slate-700">
+                <div className="text-xs text-slate-500 dark:text-slate-400 font-bold mb-1 uppercase tracking-wider">เริ่มทดสอบเมื่อ</div>
+                <div className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center justify-center gap-1">
                   {startTime.toLocaleTimeString('th-TH')}
                 </div>
               </div>
             )}
             {isMonitoring && (
-              <div className="text-center border-l pl-4 border-slate-200">
-                <div className="text-xs text-slate-500 font-bold mb-1 uppercase tracking-wider">อัปเดตใน</div>
-                <div className="text-sm font-bold text-indigo-600 flex items-center justify-center gap-1">
+              <div className="text-center border-l pl-4 border-slate-200 dark:border-slate-700">
+                <div className="text-xs text-slate-500 dark:text-slate-400 font-bold mb-1 uppercase tracking-wider">อัปเดตใน</div>
+                <div className="text-sm font-bold text-indigo-600 dark:text-indigo-400 flex items-center justify-center gap-1">
                   <Clock className="w-4 h-4" /> {countdown} วิ
                 </div>
               </div>
@@ -281,8 +281,8 @@ export default function MonitorPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Controls */}
-          <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 h-fit lg:col-span-5 xl:col-span-4">
-            <h2 className="text-lg font-bold mb-4 flex items-center gap-2 border-b pb-3 border-slate-100">
+          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 h-fit lg:col-span-5 xl:col-span-4">
+            <h2 className="text-lg font-bold mb-4 flex items-center gap-2 border-b pb-3 border-slate-100 dark:border-slate-700">
               <ServerCrash className="w-5 h-5 text-indigo-500" /> ตั้งค่าเป้าหมาย
             </h2>
             
@@ -290,8 +290,8 @@ export default function MonitorPage() {
               
               <div className="max-h-[400px] overflow-y-auto pr-2 space-y-3">
                 {targets.map((target, idx) => (
-                  <div key={idx} className={`p-3 rounded-xl border ${target.ip ? 'border-indigo-200 bg-indigo-50/30' : 'border-slate-200 bg-slate-50'}`}>
-                    <div className="text-xs font-bold text-slate-500 mb-2">ชุดที่ {idx + 1}</div>
+                  <div key={idx} className={`p-3 rounded-xl border ${target.ip ? 'border-indigo-200 dark:border-indigo-800 bg-indigo-50/30 dark:bg-indigo-900/30' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50'}`}>
+                    <div className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2">ชุดที่ {idx + 1}</div>
                     <div className="space-y-2">
                       <input 
                         type="text" 
@@ -299,28 +299,28 @@ export default function MonitorPage() {
                         onChange={e => handleTargetChange(idx, 'ip', e.target.value)}
                         disabled={isMonitoring}
                         placeholder="IP Address หรือ Domain"
-                        className="w-full px-3 py-1.5 text-sm bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono disabled:opacity-60"
+                        className="w-full px-3 py-1.5 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-slate-100 font-mono disabled:opacity-60"
                       />
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-500 mb-1">Port หลัก</label>
+                          <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">Port หลัก</label>
                           <input 
                             type="text" 
                             value={target.port1}
                             onChange={e => handleTargetChange(idx, 'port1', e.target.value)}
                             disabled={isMonitoring}
-                            className="w-full px-3 py-1.5 text-sm bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono disabled:opacity-60"
+                            className="w-full px-3 py-1.5 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-slate-100 font-mono disabled:opacity-60"
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-500 mb-1">Port รอง</label>
+                          <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">Port รอง</label>
                           <input 
                             type="text" 
                             value={target.port2}
                             onChange={e => handleTargetChange(idx, 'port2', e.target.value)}
                             disabled={isMonitoring}
                             placeholder="เว้นว่างได้"
-                            className="w-full px-3 py-1.5 text-sm bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono disabled:opacity-60"
+                            className="w-full px-3 py-1.5 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-slate-100 font-mono disabled:opacity-60"
                           />
                         </div>
                       </div>
@@ -330,12 +330,12 @@ export default function MonitorPage() {
               </div>
               
               <div className="pt-2">
-                <label className="block text-sm font-bold text-slate-700 mb-1 flex items-center gap-1.5"><Settings2 className="w-4 h-4" /> รอบสแกนทุกๆ (วินาที)</label>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5"><Settings2 className="w-4 h-4" /> รอบสแกนทุกๆ (วินาที)</label>
                 <select 
                   value={intervalSecs}
                   onChange={e => setIntervalSecs(parseInt(e.target.value))}
                   disabled={isMonitoring}
-                  className="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 font-bold text-slate-700"
+                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 font-bold text-slate-700 dark:text-slate-200"
                 >
                   <option value={5}>5 วินาที</option>
                   <option value={10}>10 วินาที</option>
@@ -345,11 +345,11 @@ export default function MonitorPage() {
                 </select>
               </div>
 
-              <div className="pt-4 border-t border-slate-100">
+              <div className="pt-4 border-t border-slate-100 dark:border-slate-700">
                 {isMonitoring ? (
                   <button 
                     onClick={stopMonitoring}
-                    className="w-full py-3 bg-rose-100 text-rose-700 hover:bg-rose-200 hover:text-rose-800 font-bold rounded-xl transition flex justify-center items-center gap-2"
+                    className="w-full py-3 bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-400 hover:bg-rose-200 dark:hover:bg-rose-900/60 font-bold rounded-xl transition flex justify-center items-center gap-2"
                   >
                     <Square className="w-5 h-5" /> หยุดการตรวจสอบ
                   </button>
@@ -372,29 +372,29 @@ export default function MonitorPage() {
             {currentStatuses.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 max-h-[400px] overflow-y-auto pr-2 pb-2">
                 {currentStatuses.map((hs, i) => (
-                  <div key={i} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-                    <div className="px-4 py-2 bg-slate-100 border-b border-slate-200 flex justify-between items-center">
-                       <span className="font-bold text-slate-600 text-xs">{hs.name}</span>
-                       <span className="font-bold text-indigo-700 font-mono text-sm truncate max-w-[120px]">{hs.host}</span>
+                  <div key={i} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col">
+                    <div className="px-4 py-2 bg-slate-100 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                       <span className="font-bold text-slate-600 dark:text-slate-300 text-xs">{hs.name}</span>
+                       <span className="font-bold text-indigo-700 dark:text-indigo-400 font-mono text-sm truncate max-w-[120px]">{hs.host}</span>
                     </div>
                     <div className="p-4 grid grid-cols-1 gap-2 flex-1">
                       {hs.results.length === 0 ? (
-                        <div className="text-center text-slate-400 text-sm py-4">กำลังโหลด...</div>
+                        <div className="text-center text-slate-400 dark:text-slate-500 text-sm py-4">กำลังโหลด...</div>
                       ) : (
                         hs.results.map(s => (
-                          <div key={s.port} className={`p-3 rounded-xl border ${s.status === 'CONNECTED' ? (s.latency && s.latency > 300 ? 'bg-orange-50 border-orange-200' : 'bg-emerald-50 border-emerald-200') : 'bg-rose-50 border-rose-200'}`}>
+                          <div key={s.port} className={`p-3 rounded-xl border ${s.status === 'CONNECTED' ? (s.latency && s.latency > 300 ? 'bg-orange-50 dark:bg-orange-900/30 border-orange-200 dark:border-orange-800' : 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800') : 'bg-rose-50 dark:bg-rose-900/30 border-rose-200 dark:border-rose-800'}`}>
                             <div className="flex justify-between items-start mb-1">
-                              <div className="font-bold text-xs text-slate-500">Port {s.port}</div>
+                              <div className="font-bold text-xs text-slate-500 dark:text-slate-400">Port {s.port}</div>
                               {s.status === 'CONNECTED' ? (
                                 s.latency && s.latency > 300 ? <Clock className="w-4 h-4 text-orange-500" /> : <CheckCircle className="w-4 h-4 text-emerald-500" />
                               ) : (
                                 <AlertTriangle className="w-4 h-4 text-rose-500" />
                               )}
                             </div>
-                            <div className={`text-base font-extrabold ${s.status === 'CONNECTED' ? (s.latency && s.latency > 300 ? 'text-orange-700' : 'text-emerald-700') : 'text-rose-700'}`}>
+                            <div className={`text-base font-extrabold ${s.status === 'CONNECTED' ? (s.latency && s.latency > 300 ? 'text-orange-700 dark:text-orange-400' : 'text-emerald-700 dark:text-emerald-400') : 'text-rose-700 dark:text-rose-400'}`}>
                               {s.status === 'CONNECTED' ? (s.latency && s.latency > 300 ? 'SLOW' : 'ONLINE') : 'OFFLINE'}
                             </div>
-                            <div className="text-[10px] font-semibold mt-1 opacity-70 truncate">
+                            <div className="text-[10px] font-semibold mt-1 opacity-70 truncate dark:text-slate-300">
                               {s.status === 'CONNECTED' ? `${s.latency} ms` : 'Timeout'}
                             </div>
                           </div>
@@ -407,26 +407,26 @@ export default function MonitorPage() {
             )}
 
             {/* Logs */}
-            <div className="bg-white flex-1 rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col min-h-[300px]">
-              <div className="p-4 bg-slate-800 text-white flex justify-between items-center">
+            <div className="bg-white dark:bg-slate-800 flex-1 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col min-h-[300px]">
+              <div className="p-4 bg-slate-800 dark:bg-slate-950 text-white flex justify-between items-center">
                 <div className="flex items-center gap-3">
-                  <h3 className="font-bold">ประวัติการเชื่อมต่อหลุด (Disconnect History)</h3>
+                  <h3 className="font-bold text-sm md:text-base">ประวัติการเชื่อมต่อหลุด (Disconnect History)</h3>
                   <span className="text-xs bg-slate-700 px-2 py-1 rounded font-mono">{logs.length} events</span>
                 </div>
                 <button onClick={exportLogsToTxt} disabled={logs.length === 0} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg text-xs transition border border-slate-600 shadow-sm">
-                  <FileText className="w-3.5 h-3.5" /> Export (.txt)
+                  <FileText className="w-3.5 h-3.5 hidden md:block" /> Export
                 </button>
               </div>
               <div className="p-0 overflow-y-auto max-h-[400px]">
                 {logs.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-48 text-slate-400">
+                  <div className="flex flex-col items-center justify-center h-48 text-slate-400 dark:text-slate-500">
                     <CheckCircle className="w-10 h-10 mb-2 opacity-50" />
                     <p className="text-sm">ยังไม่พบปัญหาพอร์ตหลุด</p>
                   </div>
                 ) : (
-                  <ul className="divide-y divide-slate-100">
+                  <ul className="divide-y divide-slate-100 dark:divide-slate-700/50">
                     {logs.map((log, idx) => (
-                      <li key={idx} className={`p-4 hover:bg-slate-50 ${log.status === 'CONNECTED' ? 'border-l-4 border-emerald-500' : log.status === 'SLOW' ? 'border-l-4 border-orange-500' : 'border-l-4 border-rose-500'}`}>
+                      <li key={idx} className={`p-4 hover:bg-slate-50 dark:hover:bg-slate-700/30 ${log.status === 'CONNECTED' ? 'border-l-4 border-emerald-500' : log.status === 'SLOW' ? 'border-l-4 border-orange-500' : 'border-l-4 border-rose-500'}`}>
                         <div className="flex justify-between items-start">
                           <div className="flex items-start gap-3">
                             <div className="mt-0.5">
@@ -439,13 +439,13 @@ export default function MonitorPage() {
                               )}
                             </div>
                             <div>
-                              <div className="font-bold text-slate-800">
-                                {log.host} <span className="text-slate-500 text-sm">(Port {log.port})</span>
+                              <div className="font-bold text-slate-800 dark:text-slate-100">
+                                {log.host} <span className="text-slate-500 dark:text-slate-400 text-sm">(Port {log.port})</span>
                               </div>
-                              <div className="text-sm font-semibold text-slate-600">{log.message}</div>
+                              <div className="text-sm font-semibold text-slate-600 dark:text-slate-400">{log.message}</div>
                             </div>
                           </div>
-                          <div className="text-xs font-mono text-slate-400 bg-slate-100 px-2 py-1 rounded">
+                          <div className="text-xs font-mono text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">
                             {log.time.toLocaleTimeString('th-TH')}
                           </div>
                         </div>

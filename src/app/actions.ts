@@ -72,7 +72,7 @@ export async function getAppData() {
 
 export async function saveAppData(data: any) {
   const currentUser = await getCurrentUser()
-  if (!currentUser) throw new Error('Unauthorized')
+  if (!currentUser || currentUser.role === 'VIEWER') throw new Error('Unauthorized')
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -84,7 +84,7 @@ export async function saveAppData(data: any) {
         })
       }
 
-      const isSuperAdmin = currentUser.username === 'nook.cctv'
+      const isSuperAdmin = currentUser.role === 'ADMIN'
       if (Array.isArray(data.pages)) {
         const pagesToSave = data.pages.filter((p: any) => isSuperAdmin || p.userId === currentUser.userId || !p.userId)
         
@@ -157,7 +157,7 @@ export async function getBackgroundScanData() {
 
 export async function getLineNotifyToken() {
   const currentUser = await getCurrentUser()
-  if (currentUser?.username !== 'nook.cctv') return null
+  if (currentUser?.role !== 'ADMIN') return null
   
   const config = await prisma.config.findUnique({ where: { id: 'app-data' } })
   return config?.lineNotifyToken || ''
@@ -165,7 +165,7 @@ export async function getLineNotifyToken() {
 
 export async function saveLineNotifyToken(token: string) {
   const currentUser = await getCurrentUser()
-  if (currentUser?.username !== 'nook.cctv') throw new Error('Unauthorized')
+  if (currentUser?.role !== 'ADMIN') throw new Error('Unauthorized')
   
   await prisma.config.upsert({
     where: { id: 'app-data' },
@@ -184,4 +184,111 @@ export async function getDeviceLogs() {
     take: 100 // show last 100 logs
   })
   return logs
+}
+
+export async function getDashboardData() {
+  const now = new Date()
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+  const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+
+  // Devices with their pages and users
+  const devices = await prisma.device.findMany({
+    where: { host: { not: '' }, ports: { not: '' } },
+    include: {
+      page: { include: { user: { select: { username: true } } } },
+      logs: {
+        where: { createdAt: { gte: sevenDaysAgo } },
+        orderBy: { createdAt: 'asc' }
+      },
+      latencyHistory: {
+        where: { createdAt: { gte: oneDayAgo } },
+        orderBy: { createdAt: 'asc' },
+        select: { port1Lat: true, port2Lat: true, createdAt: true }
+      }
+    },
+    orderBy: { pageId: 'asc' }
+  })
+
+  // Calculate uptime % per device (7 days)
+  // We count OFFLINE events as "downtime windows" between OFFLINE → ONLINE
+  const deviceStats = devices.map(device => {
+    const logs = device.logs
+    const windowMs = 7 * 24 * 60 * 60 * 1000
+
+    let downtimeMs = 0
+    let lastOfflineAt: Date | null = null
+    let offlineCount = 0
+
+    for (const log of logs) {
+      if (log.event === 'OFFLINE') {
+        lastOfflineAt = new Date(log.createdAt)
+        offlineCount++
+      } else if (log.event === 'ONLINE' && lastOfflineAt) {
+        downtimeMs += new Date(log.createdAt).getTime() - lastOfflineAt.getTime()
+        lastOfflineAt = null
+      }
+    }
+
+    // Still offline now
+    if (lastOfflineAt) {
+      downtimeMs += now.getTime() - lastOfflineAt.getTime()
+    }
+
+    const uptimePct = Math.max(0, Math.min(100, ((windowMs - downtimeMs) / windowMs) * 100))
+
+    // Avg latency today
+    const latHistory = device.latencyHistory
+    const validLats = latHistory
+      .map(h => h.port1Lat ?? h.port2Lat)
+      .filter((v): v is number => v !== null && v !== undefined)
+    const avgLatency = validLats.length > 0 ? Math.round(validLats.reduce((a, b) => a + b, 0) / validLats.length) : null
+
+    return {
+      id: device.id,
+      name: device.name,
+      host: device.host,
+      ports: device.ports,
+      isOffline: device.isOffline,
+      bgLatency1: device.bgLatency1,
+      bgLatency2: device.bgLatency2,
+      bgLastScannedAt: device.bgLastScannedAt,
+      owner: device.page.user?.username ?? device.page.name,
+      uptimePct: Math.round(uptimePct * 10) / 10,
+      downtimeMs,
+      offlineCount,
+      avgLatency,
+      latencyHistory: latHistory.map(h => ({
+        time: h.createdAt,
+        port1Lat: h.port1Lat,
+        port2Lat: h.port2Lat,
+      }))
+    }
+  })
+
+  // Summary stats
+  const totalDevices = deviceStats.length
+  const onlineDevices = deviceStats.filter(d => !d.isOffline).length
+  const avgUptimePct = totalDevices > 0
+    ? Math.round((deviceStats.reduce((a, d) => a + d.uptimePct, 0) / totalDevices) * 10) / 10
+    : 0
+  const totalDowntimeMs = deviceStats.reduce((a, d) => a + d.downtimeMs, 0)
+  const mostOfflineDevice = [...deviceStats].sort((a, b) => b.offlineCount - a.offlineCount)[0] ?? null
+
+  const allValidLats = deviceStats.flatMap(d => d.latencyHistory.map(h => h.port1Lat ?? h.port2Lat).filter((v): v is number => v !== null))
+  const globalAvgLatency = allValidLats.length > 0
+    ? Math.round(allValidLats.reduce((a, b) => a + b, 0) / allValidLats.length)
+    : null
+
+  return {
+    deviceStats,
+    summary: {
+      totalDevices,
+      onlineDevices,
+      offlineDevices: totalDevices - onlineDevices,
+      avgUptimePct,
+      totalDowntimeMs,
+      globalAvgLatency,
+      mostOfflineDevice: mostOfflineDevice ? { name: mostOfflineDevice.name, count: mostOfflineDevice.offlineCount } : null,
+    }
+  }
 }

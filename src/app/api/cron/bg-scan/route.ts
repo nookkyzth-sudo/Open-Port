@@ -111,6 +111,17 @@ export async function GET(req: NextRequest) {
                 }
             });
 
+            // Save latency history for chart (only when at least one port responded)
+            if (bgLatency1 !== null || bgLatency2 !== null) {
+                await prisma.latencyHistory.create({
+                    data: {
+                        deviceId: device.id,
+                        port1Lat: bgLatency1,
+                        port2Lat: bgLatency2,
+                    }
+                });
+            }
+
             // State transition logic
             if (!wasOffline && isOffline) {
                 // Went offline
@@ -140,6 +151,12 @@ export async function GET(req: NextRequest) {
         });
 
         await Promise.all(scanPromises);
+
+        // Cleanup: delete LatencyHistory older than 7 days
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        await prisma.latencyHistory.deleteMany({
+            where: { createdAt: { lt: sevenDaysAgo } }
+        });
 
         return NextResponse.json({ success: true, message: `Scanned ${devices.length} devices.` });
     } catch (error: any) {
