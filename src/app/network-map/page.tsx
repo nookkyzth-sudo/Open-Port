@@ -102,7 +102,60 @@ export default function NetworkMapPage() {
 
   useEffect(() => {
     loadMapData()
+    // ตั้งเวลาให้รีเฟรชข้อมูลอัตโนมัติทุกๆ 30 วินาทีเพื่อเป็นแบบ Real-time
+    const interval = setInterval(() => {
+      refreshDataSilently()
+    }, 30000)
+    return () => clearInterval(interval)
   }, [])
+
+  const refreshDataSilently = async () => {
+    try {
+      const data = await getDashboardData()
+      const devices = data.deviceStats
+
+      setNodes((nds) => 
+        nds.map((node) => {
+          if (node.type === 'deviceNode') {
+            const updatedDev = devices.find((d: any) => d.id === node.id)
+            if (updatedDev) {
+              return { ...node, data: { ...node.data, device: updatedDev } }
+            }
+          }
+          return node
+        })
+      )
+
+      setEdges((eds) => 
+        eds.map((edge) => {
+          if (edge.target && !edge.target.startsWith('owner-')) {
+            const updatedDev = devices.find((d: any) => d.id === edge.target)
+            if (updatedDev) {
+              let color = '#10b981' // emerald-500
+              if (updatedDev.isOffline) color = '#f43f5e'
+              else if (updatedDev.avgLatency && updatedDev.avgLatency > 150) color = '#f97316'
+              
+              return {
+                ...edge,
+                animated: !updatedDev.isOffline,
+                style: { stroke: color, strokeWidth: updatedDev.isOffline ? 1 : 2, opacity: updatedDev.isOffline ? 0.3 : 0.8 }
+              }
+            }
+          }
+          return edge
+        })
+      )
+      
+      // Update selected device if it's open
+      setSelectedDevice((current) => {
+        if (!current) return current
+        const updated = devices.find((d: any) => d.id === current.id)
+        return updated || current
+      })
+    } catch (err) {
+      console.error('Failed to auto-refresh network map:', err)
+    }
+  }
 
   const loadMapData = async () => {
     try {
