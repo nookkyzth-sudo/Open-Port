@@ -123,38 +123,47 @@ export default function NetworkMapPage() {
       const devices = data.deviceStats
       const owners = Array.from(new Set(devices.map((d: any) => d.owner)))
       
-      const ownerSpacing = 500
-      
-      owners.forEach((owner: string, i) => {
-        const oX = (i - (owners.length - 1) / 2) * ownerSpacing
+      const devSpacingX = 260
+      const devSpacingY = 160
+      const MAX_PER_ROW = 4
+      const ownerGap = 150 // gap between owner blocks
+
+      // Calculate required width for each owner block
+      const ownerBlocks = owners.map((owner: string) => {
+        const ownerDevices = devices.filter((d: any) => d.owner === owner)
+        const cols = Math.min(MAX_PER_ROW, Math.max(1, ownerDevices.length))
+        return { owner, devices: ownerDevices, width: cols * devSpacingX }
+      })
+
+      const totalWidth = ownerBlocks.reduce((sum, b) => sum + b.width + ownerGap, 0) - ownerGap
+      let currentX = -totalWidth / 2
+
+      ownerBlocks.forEach((block) => {
+        const oX = currentX + block.width / 2
         const oY = 250
         
         newNodes.push({
-          id: `owner-${owner}`,
+          id: `owner-${block.owner}`,
           position: { x: oX, y: oY },
-          data: { label: owner },
+          data: { label: block.owner },
           type: 'ownerNode'
         })
         
         newEdges.push({
-          id: `e-root-owner-${owner}`,
+          id: `e-root-owner-${block.owner}`,
           source: 'root',
-          target: `owner-${owner}`,
+          target: `owner-${block.owner}`,
           animated: true,
           style: { stroke: '#6366f1', strokeWidth: 2, opacity: 0.6 }
         })
 
-        const ownerDevices = devices.filter((d: any) => d.owner === owner)
-        const devSpacing = 240
-        // Determine layout for devices (maybe multiple rows if many)
-        const MAX_PER_ROW = 4
-        ownerDevices.forEach((dev: any, j: number) => {
+        block.devices.forEach((dev: any, j: number) => {
           const row = Math.floor(j / MAX_PER_ROW)
           const col = j % MAX_PER_ROW
-          const numInRow = Math.min(MAX_PER_ROW, ownerDevices.length - row * MAX_PER_ROW)
+          const numInRow = Math.min(MAX_PER_ROW, block.devices.length - row * MAX_PER_ROW)
           
-          const dX = oX + (col - (numInRow - 1) / 2) * devSpacing
-          const dY = oY + 250 + (row * 150)
+          const dX = oX + (col - (numInRow - 1) / 2) * devSpacingX
+          const dY = oY + 220 + (row * devSpacingY)
           
           newNodes.push({
             id: dev.id,
@@ -168,13 +177,15 @@ export default function NetworkMapPage() {
           else if (dev.avgLatency && dev.avgLatency > 150) color = '#f97316' // orange-500
 
           newEdges.push({
-            id: `e-owner-${owner}-${dev.id}`,
-            source: `owner-${owner}`,
+            id: `e-owner-${block.owner}-${dev.id}`,
+            source: `owner-${block.owner}`,
             target: dev.id,
             animated: !dev.isOffline,
             style: { stroke: color, strokeWidth: dev.isOffline ? 1 : 2, opacity: dev.isOffline ? 0.3 : 0.8 }
           })
         })
+        
+        currentX += block.width + ownerGap
       })
 
       setNodes(newNodes)
