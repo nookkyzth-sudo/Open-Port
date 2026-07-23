@@ -297,6 +297,9 @@ export default function Home() {
               <Link href="/dashboard" className="text-xs font-bold px-3.5 py-2 rounded-full flex items-center gap-1.5 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition shadow-sm border border-amber-100 dark:border-amber-800">
                 <BarChart2 className="w-4 h-4" /> Dashboard
               </Link>
+              <Link href="/network-map" className="text-xs font-bold px-3.5 py-2 rounded-full flex items-center gap-1.5 bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-900/50 transition shadow-sm border border-sky-100 dark:border-sky-800">
+                <Activity className="w-4 h-4" /> Network Map
+              </Link>
               <span className={`text-xs font-bold px-3.5 py-2 rounded-full flex items-center gap-1.5 shadow-sm border ${isConnected ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border-rose-100 dark:border-rose-800'}`}>
                 <Database className="w-4 h-4" /> {isConnected ? 'Connected' : 'Disconnected'}
               </span>
