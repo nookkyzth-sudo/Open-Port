@@ -492,7 +492,7 @@ export default function Home() {
                               const updatedAt = new Date(d.ipUpdatedAt!);
                               const diffTime = new Date().getTime() - updatedAt.getTime();
                               const diffDays = Math.floor(Math.abs(diffTime) / (1000 * 60 * 60 * 24));
-                              const isRecent = diffTime >= 0 ? diffTime <= 5 * 60 * 60 * 1000 : Math.abs(diffTime) <= 3 * 60 * 60 * 1000;
+                              const isRecent = diffTime >= 0 ? diffTime <= 6 * 60 * 60 * 1000 : Math.abs(diffTime) <= 6 * 60 * 60 * 1000;
                               return (
                                 <span className={`text-[10px] px-2 py-0.5 mt-1 rounded-md flex items-center gap-1.5 w-fit ${isRecent ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-200 dark:border-emerald-800' : 'text-slate-500/80 italic'}`}>
                                   {isRecent && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_4px_rgba(16,185,129,0.8)] animate-pulse"></span>}
