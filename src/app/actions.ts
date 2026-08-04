@@ -18,13 +18,20 @@ export async function getAppData() {
   }
 
   const config = await prisma.config.findUnique({ where: { id: 'app-data' } })
-  const pages = await prisma.page.findMany({
+  let pages = await prisma.page.findMany({
     include: { 
       devices: { orderBy: { order: 'asc' } },
       user: { select: { username: true } }
     },
     orderBy: { order: 'asc' }
   })
+
+  // Data isolation: Only test.cctv is isolated. Other users see everything except test.cctv's data.
+  if (currentUser?.username === 'test.cctv') {
+    pages = pages.filter(p => p.userId === null || p.userId === currentUser.userId)
+  } else if (currentUser?.role !== 'ADMIN') {
+    pages = pages.filter(p => p.user?.username !== 'test.cctv')
+  }
 
   // Ensure TEST Port page exists
   let testPortPage = pages.find(p => p.name === 'TEST Port' && p.userId === null)
@@ -142,7 +149,16 @@ export async function saveAppData(data: any) {
 }
 
 export async function getBackgroundScanData() {
+  const currentUser = await getCurrentUser()
+  let pageFilter: any = {}
+  if (currentUser?.username === 'test.cctv') {
+    pageFilter = { OR: [{ userId: null }, { userId: currentUser?.userId }] }
+  } else if (currentUser?.role !== 'ADMIN') {
+    pageFilter = { OR: [{ userId: null }, { user: { username: { not: 'test.cctv' } } }] }
+  }
+
   const devices = await prisma.device.findMany({
+    where: { page: pageFilter },
     include: {
       page: {
         include: {
@@ -176,7 +192,16 @@ export async function saveLineNotifyToken(token: string) {
 }
 
 export async function getDeviceLogs() {
+  const currentUser = await getCurrentUser()
+  let pageFilter: any = {}
+  if (currentUser?.username === 'test.cctv') {
+    pageFilter = { OR: [{ userId: null }, { userId: currentUser?.userId }] }
+  } else if (currentUser?.role !== 'ADMIN') {
+    pageFilter = { OR: [{ userId: null }, { user: { username: { not: 'test.cctv' } } }] }
+  }
+
   const logs = await prisma.deviceLog.findMany({
+    where: { device: { page: pageFilter } },
     include: {
       device: { select: { name: true, host: true, page: { select: { name: true, user: { select: { username: true } } } } } }
     },
@@ -187,13 +212,26 @@ export async function getDeviceLogs() {
 }
 
 export async function getDashboardData() {
+  const currentUser = await getCurrentUser()
   const now = new Date()
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
   const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
 
+  // Data isolation: Only test.cctv is isolated. Other users see everything except test.cctv's data.
+  let pageFilter: any = {}
+  if (currentUser?.username === 'test.cctv') {
+    pageFilter = { OR: [{ userId: null }, { userId: currentUser?.userId }] }
+  } else if (currentUser?.role !== 'ADMIN') {
+    pageFilter = { OR: [{ userId: null }, { user: { username: { not: 'test.cctv' } } }] }
+  }
+
   // Devices with their pages and users
   const devices = await prisma.device.findMany({
-    where: { host: { not: '' }, ports: { not: '' } },
+    where: { 
+      host: { not: '' }, 
+      ports: { not: '' },
+      page: pageFilter 
+    },
     include: {
       page: { include: { user: { select: { username: true } } } },
       logs: {

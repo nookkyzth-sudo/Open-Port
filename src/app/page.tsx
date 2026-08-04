@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { ShieldAlert, Radio, Server, Database, Timer, Save, ListPlus, Info, PlusCircle, Clock, Plus, RotateCcw, PlayCircle, TableProperties, FileText, X, ChevronLeft, ChevronRight, Edit2, Trash2, AlertCircle, CheckCircle, User, LogOut, Activity, AlertTriangle, BarChart2 } from 'lucide-react'
+import { ShieldAlert, Radio, Server, Database, Timer, Save, ListPlus, Info, PlusCircle, Clock, Plus, RotateCcw, PlayCircle, TableProperties, FileText, X, ChevronLeft, ChevronRight, Edit2, Trash2, AlertCircle, CheckCircle, User, LogOut, Activity, AlertTriangle, BarChart2, Upload } from 'lucide-react'
 import { getAppData, saveAppData, getBackgroundScanData } from './actions'
 import { getCurrentUser, logout } from './auth-actions'
 import Link from 'next/link'
@@ -17,20 +17,21 @@ export default function Home() {
   const [config, setConfig] = useState<Config>({ activePageId: null, scanInterval: 'off' })
   const [isConnected, setIsConnected] = useState(false) // For API status
   const [currentUser, setCurrentUser] = useState<any>(null)
-  
+
   const [scanning, setScanning] = useState(false)
   const [scanResults, setScanResults] = useState<ScanResult[]>([])
   const [scanProgress, setScanProgress] = useState(0)
   const [totalTargets, setTotalTargets] = useState(0)
   const [finishedCount, setFinishedCount] = useState(0)
-  
-  const [alert, setAlert] = useState<{ type: 'error'|'success'|'info', message: string } | null>(null)
-  
+
+  const [alert, setAlert] = useState<{ type: 'error' | 'success' | 'info', message: string } | null>(null)
+
   const [liveOfflineStatuses, setLiveOfflineStatuses] = useState<Record<string, boolean>>({})
 
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
   const timeLeftRef = useRef<number | null>(null)
-  const startScanRef = useRef<() => void>(() => {})
+  const startScanRef = useRef<() => void>(() => { })
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60)
@@ -40,7 +41,7 @@ export default function Home() {
 
   useEffect(() => {
     loadData()
-    
+
     // Auto-refresh offline status every 30 seconds
     const fetchOffline = async () => {
       try {
@@ -50,9 +51,9 @@ export default function Home() {
           statusMap[d.id] = d.isOffline
         })
         setLiveOfflineStatuses(statusMap)
-      } catch (e) {}
+      } catch (e) { }
     }
-    
+
     fetchOffline()
     const offlineIntv = setInterval(fetchOffline, 30000)
     return () => clearInterval(offlineIntv)
@@ -93,7 +94,7 @@ export default function Home() {
         }
       }
     }, 1000)
-    
+
     return () => clearInterval(timer)
   }, [config.scanInterval])
 
@@ -164,7 +165,7 @@ export default function Home() {
   const isViewer = currentUser?.role === 'VIEWER'
   const canEditActivePage = !isViewer && (activePage?.userId === currentUser?.userId || isSuperAdmin || !activePage?.userId)
 
-  const offlineDevices = pages.flatMap(p => 
+  const offlineDevices = pages.flatMap(p =>
     p.devices.map(d => {
       const isLiveOffline = (d.id && liveOfflineStatuses[d.id] !== undefined) ? liveOfflineStatuses[d.id] : d.isOffline
       return { ...d, isOffline: isLiveOffline, pageName: p.name, userName: p.user?.username }
@@ -183,12 +184,12 @@ export default function Home() {
       content += `${dev.host || 'Unknown'}\tPort1: ${port1} Port2: ${port2}\n`
       if (index < validDevices.length - 1) content += '\n'
     })
-    
+
     const d = new Date()
     const dateStr = `${d.getDate()}/${d.getMonth() + 1}/${(d.getFullYear() + 543).toString().slice(-2)}`
     if (content.length > 0) content += '\n'
     content += `(True ไอพีจริง ค.กลางวัน + ค.กลางคืน วันที่ ${dateStr})`
-    
+
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -200,19 +201,92 @@ export default function Home() {
     URL.revokeObjectURL(url)
   }
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !activePage) return
+
+    const reader = new FileReader()
+    reader.onload = async (evt) => {
+      try {
+        const data = evt.target?.result
+        if (!data) return
+
+        const XLSX = await import('xlsx')
+        const workbook = XLSX.read(data, { type: 'array' })
+        const sheetName = workbook.SheetNames[0]
+        const worksheet = workbook.Sheets[sheetName]
+        const jsonData = XLSX.utils.sheet_to_json<any[]>(worksheet, { header: 1 })
+
+        const newDevices: Device[] = []
+        for (let i = 0; i < jsonData.length; i++) {
+          const row = jsonData[i]
+          if (!row || row.length === 0) continue
+
+          if (i === 0 && typeof row[0] === 'string' && (row[0].toLowerCase().includes('ชื่อ') || row[0].toLowerCase().includes('name') || row[0].includes('สาขา'))) {
+            continue
+          }
+
+          const name = row[0]?.toString().trim() || ''
+          const host = row[1]?.toString().trim() || ''
+          let ports = row[2]?.toString().trim() || ''
+
+          // Ensure ports are somewhat clean
+          if (ports) {
+            ports = ports.replace(/[^0-9,]/g, '')
+          }
+
+          if (host) {
+            const existing = newDevices.find(d => d.host === host)
+            if (existing) {
+              // Combine ports up to 2 ports
+              if (ports) {
+                const currentPorts = existing.ports ? existing.ports.split(',') : []
+                if (currentPorts.length < 2 && !currentPorts.includes(ports)) {
+                  existing.ports = existing.ports ? `${existing.ports},${ports}` : ports
+                }
+              }
+              // If previous row had no name but this one does, update it
+              if (!existing.name && name) {
+                existing.name = name
+              }
+            } else {
+              newDevices.push({ name, host, ports })
+            }
+          }
+        }
+
+        if (newDevices.length > 0) {
+          setPages(prev => prev.map(p => {
+            if (p.id !== activePage.id) return p
+            const existing = p.devices.filter(d => d.name || d.host || d.ports)
+            return { ...p, devices: [...existing, ...newDevices].slice(0, 250) }
+          }))
+          setAlert({ type: 'success', message: `นำเข้าข้อมูลสำเร็จ ${newDevices.length} รายการ` })
+        } else {
+          setAlert({ type: 'error', message: 'ไม่พบข้อมูลในไฟล์ หรือรูปแบบไม่ถูกต้อง' })
+        }
+      } catch (err) {
+        setAlert({ type: 'error', message: 'ไม่สามารถอ่านไฟล์ได้ กรุณาตรวจสอบรูปแบบไฟล์ (.xlsx, .csv)' })
+      }
+
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+    reader.readAsArrayBuffer(file)
+  }
+
   const startScan = async () => {
     if (!activePage) return
-    
+
     // Validation
     const targetsToScan: any[] = []
     for (let i = 0; i < activePage.devices.length; i++) {
       const dev = activePage.devices[i]
       if (!dev.name || !dev.host || !dev.ports) {
-        return setAlert({ type: 'error', message: `แถวที่ ${i+1} กรอกข้อมูลไม่สมบูรณ์` })
+        return setAlert({ type: 'error', message: `แถวที่ ${i + 1} กรอกข้อมูลไม่สมบูรณ์` })
       }
       const ports = dev.ports.split(',').map(p => parseInt(p.trim())).filter(p => !isNaN(p) && p > 0 && p <= 65535)
       if (ports.length === 0 || ports.length > 2) {
-        return setAlert({ type: 'error', message: `แถวที่ ${i+1} พอร์ตไม่ถูกต้อง (1-2 พอร์ตเท่านั้น)` })
+        return setAlert({ type: 'error', message: `แถวที่ ${i + 1} พอร์ตไม่ถูกต้อง (1-2 พอร์ตเท่านั้น)` })
       }
       targetsToScan.push({ name: dev.name, host: dev.host, ports })
     }
@@ -240,7 +314,7 @@ export default function Home() {
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        
+
         buffer += decoder.decode(value, { stream: true })
         const events = buffer.split('\n\n')
         buffer = events.pop() || ''
@@ -304,7 +378,7 @@ export default function Home() {
                 <Database className="w-4 h-4" /> {isConnected ? 'Connected' : 'Disconnected'}
               </span>
             </div>
-            
+
             {/* User Actions */}
             {currentUser && (
               <div className="flex flex-wrap justify-center items-center gap-2 sm:border-l-2 sm:border-slate-200 dark:sm:border-slate-700 sm:pl-3 pt-3 sm:pt-0 border-t-2 sm:border-t-0 border-slate-100 dark:border-slate-700 w-full sm:w-auto mt-2 sm:mt-0">
@@ -360,14 +434,13 @@ export default function Home() {
             <div className="p-6">
               <div className="mb-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                 {pages.map(p => (
-                  <div 
-                    key={p.id} 
-                    onClick={() => setActivePageId(p.id)} 
-                    className={`p-3 rounded-xl border cursor-pointer transition ${
-                      p.id === activePageId 
-                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 ring-2 ring-indigo-200 dark:ring-indigo-800' 
-                        : 'border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700/50 hover:border-indigo-300 dark:hover:border-indigo-500'
-                    }`}
+                  <div
+                    key={p.id}
+                    onClick={() => setActivePageId(p.id)}
+                    className={`p-3 rounded-xl border cursor-pointer transition ${p.id === activePageId
+                      ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 ring-2 ring-indigo-200 dark:ring-indigo-800'
+                      : 'border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700/50 hover:border-indigo-300 dark:hover:border-indigo-500'
+                      }`}
                   >
                     <div className="flex justify-between items-start sm:items-center flex-col sm:flex-row gap-1 mb-1.5">
                       <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5 truncate w-full">
@@ -407,8 +480,8 @@ export default function Home() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-col gap-1">
-                            <input 
-                              type="text" 
+                            <input
+                              type="text"
                               value={d.host}
                               onChange={(e) => handleDeviceChange(activePage.id, i, 'host', e.target.value)}
                               disabled={!canEditActivePage}
@@ -419,7 +492,7 @@ export default function Home() {
                               const updatedAt = new Date(d.ipUpdatedAt!);
                               const diffTime = new Date().getTime() - updatedAt.getTime();
                               const diffDays = Math.floor(Math.abs(diffTime) / (1000 * 60 * 60 * 24));
-                              const isRecent = diffTime >= 0 ? diffTime <= 2 * 60 * 60 * 1000 : Math.abs(diffTime) <= 2 * 60 * 60 * 1000;
+                              const isRecent = diffTime >= 0 ? diffTime <= 5 * 60 * 60 * 1000 : Math.abs(diffTime) <= 3 * 60 * 60 * 1000;
                               return (
                                 <span className={`text-[10px] px-2 py-0.5 mt-1 rounded-md flex items-center gap-1.5 w-fit ${isRecent ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-200 dark:border-emerald-800' : 'text-slate-500/80 italic'}`}>
                                   {isRecent && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_4px_rgba(16,185,129,0.8)] animate-pulse"></span>}
@@ -493,6 +566,10 @@ export default function Home() {
                       <button onClick={() => activePage && addDevice(activePage.id)} className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 font-medium rounded-lg text-xs transition border border-slate-200 shadow-sm">
                         <Plus className="w-3.5 h-3.5" /> เพิ่มอุปกรณ์
                       </button>
+                      <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} />
+                      <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 font-medium rounded-lg text-xs transition border border-slate-200 shadow-sm">
+                        <Upload className="w-3.5 h-3.5" /> อิมพอร์ต (Excel/CSV)
+                      </button>
                       <button onClick={handleSave} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg text-xs transition shadow-sm">
                         <Save className="w-3.5 h-3.5" /> บันทึก Database
                       </button>
@@ -527,13 +604,12 @@ export default function Home() {
                   </button>
                 </div>
               </div>
-              
+
               {alert && (
-                <div className={`mt-4 p-4 rounded-xl flex items-center gap-3 border ${
-                  alert.type === 'error' 
-                    ? 'bg-red-50 dark:bg-red-950/50 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300' 
-                    : 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
-                } animate-in fade-in slide-in-from-top-2 duration-300`}>
+                <div className={`mt-4 p-4 rounded-xl flex items-center gap-3 border ${alert.type === 'error'
+                  ? 'bg-red-50 dark:bg-red-950/50 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
+                  : 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
+                  } animate-in fade-in slide-in-from-top-2 duration-300`}>
                   {alert.type === 'error' ? <AlertCircle className="w-5 h-5 shrink-0" /> : <CheckCircle className="w-5 h-5 shrink-0" />}
                   <div className="text-sm font-bold">{alert.message}</div>
                 </div>
