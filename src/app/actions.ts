@@ -6,12 +6,22 @@ import { getCurrentUser } from './auth-actions'
 export async function getAppData() {
   const currentUser = await getCurrentUser()
   
-  // Cleanup orphaned pages (except TEST Port)
+  // Cleanup orphaned pages and VIEWER user pages
   try {
-    const oldPages = await prisma.page.findMany({ where: { userId: null, name: { not: 'TEST Port' } } })
+    const viewerUsers = await prisma.user.findMany({ where: { role: 'VIEWER' }, select: { id: true } })
+    const viewerUserIds = viewerUsers.map(u => u.id)
+    
+    const oldPages = await prisma.page.findMany({ 
+      where: { 
+        OR: [
+          { userId: null, name: { not: 'TEST Port' } },
+          { userId: { in: viewerUserIds } }
+        ] 
+      } 
+    })
     if (oldPages.length > 0) {
       await prisma.device.deleteMany({ where: { pageId: { in: oldPages.map(p => p.id) } } })
-      await prisma.page.deleteMany({ where: { userId: null, name: { not: 'TEST Port' } } })
+      await prisma.page.deleteMany({ where: { id: { in: oldPages.map(p => p.id) } } })
     }
   } catch (e) {
     console.error('Cleanup failed', e)
@@ -21,10 +31,13 @@ export async function getAppData() {
   let pages = await prisma.page.findMany({
     include: { 
       devices: { orderBy: { order: 'asc' } },
-      user: { select: { username: true } }
+      user: { select: { username: true, role: true } }
     },
     orderBy: { order: 'asc' }
   })
+
+  // Filter out any VIEWER user pages just in case
+  pages = pages.filter(p => p.user?.role !== 'VIEWER')
 
   // Data isolation: Only test.cctv is isolated. Other users see everything except test.cctv's data.
   if (currentUser?.username === 'test.cctv') {
@@ -47,14 +60,14 @@ export async function getAppData() {
       },
       include: {
         devices: { orderBy: { order: 'asc' } },
-        user: { select: { username: true } }
+        user: { select: { username: true, role: true } }
       }
     })
     pages.unshift(testPortPage)
   }
 
-  // If the current user doesn't have a page in the DB, create one automatically
-  if (currentUser) {
+  // If the current user doesn't have a page in the DB, create one automatically (unless VIEWER)
+  if (currentUser && currentUser.role !== 'VIEWER') {
     const userHasPage = pages.some(p => p.userId === currentUser.userId)
     if (!userHasPage) {
       const newPage = await prisma.page.create({
@@ -67,7 +80,7 @@ export async function getAppData() {
         },
         include: {
           devices: { orderBy: { order: 'asc' } },
-          user: { select: { username: true } }
+          user: { select: { username: true, role: true } }
         }
       })
       pages.push(newPage)
