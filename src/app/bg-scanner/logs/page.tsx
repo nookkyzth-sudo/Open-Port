@@ -8,6 +8,7 @@ import { getDeviceLogs } from '../../actions'
 type DeviceLog = {
   id: string
   event: string
+  ip?: string | null
   message: string | null
   createdAt: Date
   device: { name: string; host: string; page: { name: string; user?: { username: string } | null } }
@@ -56,7 +57,7 @@ export default function LogsPage() {
   const exportCSV = () => {
     if (logs.length === 0) return
     const bom = '\uFEFF'
-    const headers = ['#', 'เวลา (Timestamp)', 'ชื่ออุปกรณ์', 'IP Address', 'เหตุการณ์', 'รายละเอียด', 'ออฟไลน์ของอุปกรณ์นี้ (ครั้ง)', 'เปลี่ยน IP ของอุปกรณ์นี้ (ครั้ง)']
+    const headers = ['#', 'เวลา (Timestamp)', 'ชื่ออุปกรณ์', 'IP ขณะเกิดเหตุการณ์', 'Host ปัจจุบัน', 'เหตุการณ์', 'รายละเอียด', 'ออฟไลน์ของอุปกรณ์นี้ (ครั้ง)', 'เปลี่ยน IP ของอุปกรณ์นี้ (ครั้ง)']
     const rows = logs.map((log, index) => {
       const devName = log.device.name || 'ไม่ระบุชื่อ'
       const timeStr = new Date(log.createdAt).toLocaleString('th-TH', { 
@@ -64,10 +65,12 @@ export default function LogsPage() {
         hour: '2-digit', minute: '2-digit', second: '2-digit' 
       })
       const eventLabel = log.event === 'OFFLINE' ? 'ออฟไลน์' : log.event === 'IP_CHANGED' ? 'เปลี่ยน IP' : 'ออนไลน์'
+      const recordedIp = log.ip || log.device.host || '-'
       return [
         index + 1,
         `"${timeStr}"`,
         `"${devName.replace(/"/g, '""')}"`,
+        `"${recordedIp.replace(/"/g, '""')}"`,
         `"${(log.device.host || '-').replace(/"/g, '""')}"`,
         `"${eventLabel}"`,
         `"${(log.message || '-').replace(/"/g, '""')}"`,
@@ -102,8 +105,10 @@ export default function LogsPage() {
         hour: '2-digit', minute: '2-digit', second: '2-digit'
       })
       const eventLabel = log.event === 'OFFLINE' ? '[ออฟไลน์]' : log.event === 'IP_CHANGED' ? '[เปลี่ยน IP]' : '[ออนไลน์]'
+      const recordedIp = log.ip || log.device.host || '-'
       content += `${index + 1}. เวลา: ${timeStr}\n`
-      content += `   อุปกรณ์: ${devName} (${log.device.host})\n`
+      content += `   อุปกรณ์: ${devName} (Host: ${log.device.host})\n`
+      content += `   IP บันทึกขณะเกิดเหตุการณ์: ${recordedIp}\n`
       content += `   สถานะ: ${eventLabel}\n`
       content += `   รายละเอียด: ${log.message || '-'}\n`
       content += `   สถิติอุปกรณ์นี้: ออฟไลน์ ${offlineCountsByName[devName] || 0} ครั้ง | เปลี่ยน IP ${ipChangeCountsByName[devName] || 0} ครั้ง\n\n`
@@ -215,7 +220,7 @@ export default function LogsPage() {
             <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
               <thead className="bg-slate-50 dark:bg-slate-700/50">
                 <tr>
-                  {['เวลา (Timestamp)', 'อุปกรณ์ / IP', 'เหตุการณ์', 'รายละเอียด', 'สถิติตามชื่ออุปกรณ์'].map(h => (
+                  {['เวลา (Timestamp)', 'อุปกรณ์ / Host', 'IP บันทึกขณะเกิดเหตุการณ์', 'เหตุการณ์', 'รายละเอียด', 'สถิติตามชื่ออุปกรณ์'].map(h => (
                     <th key={h} className="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">{h}</th>
                   ))}
                 </tr>
@@ -225,6 +230,7 @@ export default function LogsPage() {
                   const devName = log.device.name || 'ไม่ระบุชื่อ'
                   const offCount = offlineCountsByName[devName] || 0
                   const ipCount = ipChangeCountsByName[devName] || 0
+                  const recordedIp = log.ip || log.device.host || '-'
 
                   return (
                     <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition">
@@ -234,6 +240,21 @@ export default function LogsPage() {
                       <td className="px-6 py-4">
                         <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{devName}</p>
                         <p className="text-xs font-mono text-slate-500 dark:text-slate-400">{log.device.host}</p>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {log.event === 'OFFLINE' ? (
+                          <span className="inline-flex items-center gap-1.5 font-mono text-xs font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 px-3 py-1 rounded-lg border border-rose-200 dark:border-rose-800/60">
+                            🔴 IP ออฟไลน์: {recordedIp}
+                          </span>
+                        ) : log.event === 'ONLINE' ? (
+                          <span className="inline-flex items-center gap-1.5 font-mono text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-3 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800/60">
+                            🟢 IP ใหม่: {recordedIp}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 font-mono text-xs font-bold text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/60 px-3 py-1 rounded-lg border border-sky-200 dark:border-sky-800/60">
+                            🔵 IP ใหม่: {recordedIp}
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {log.event === 'OFFLINE' ? (
@@ -268,7 +289,7 @@ export default function LogsPage() {
                 })}
                 {logs.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
                       {loading ? 'กำลังโหลดข้อมูล...' : 'ยังไม่มีประวัติการแจ้งเตือนในช่วงเวลานี้'}
                     </td>
                   </tr>

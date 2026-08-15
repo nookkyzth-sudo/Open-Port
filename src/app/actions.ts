@@ -138,6 +138,7 @@ export async function saveAppData(data: any) {
                       data: {
                         deviceId: d.id,
                         event: 'IP_CHANGED',
+                        ip: d.host,
                         message: `เปลี่ยน IP จาก ${devExists.host} ➔ ${d.host}`
                       }
                     })

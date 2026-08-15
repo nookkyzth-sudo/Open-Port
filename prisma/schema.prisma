@@ -59,7 +59,8 @@ model DeviceLog {
   id        String   @id @default(cuid())
   deviceId  String
   device    Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
-  event     String   // 'OFFLINE', 'ONLINE'
+  event     String   // 'OFFLINE', 'ONLINE', 'IP_CHANGED'
+  ip        String?  // Recorded IP address at event time
   message   String?
   createdAt DateTime @default(now())
 }

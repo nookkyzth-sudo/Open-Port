@@ -1,9 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import net from 'net';
+import dns from 'dns';
 import prisma from '@/lib/prisma';
 
 export const maxDuration = 60; // Max duration for Vercel Hobby is 10s, Pro is 60s
 export const dynamic = 'force-dynamic';
+
+async function resolveIp(host: string): Promise<string> {
+    if (!host) return '-';
+    const trimmed = host.trim();
+    if (net.isIP(trimmed)) return trimmed;
+    try {
+        const res = await dns.promises.lookup(trimmed);
+        return res.address || trimmed;
+    } catch {
+        return trimmed;
+    }
+}
 
 function scanPort(host: string, port: number, timeout = 2000): Promise<{ port: number, status: string, latency: number | null }> {
     return new Promise((resolve) => {
@@ -122,30 +135,48 @@ export async function GET(req: NextRequest) {
                 });
             }
 
+            // Resolve current IP address (handles static IP or DDNS host resolution)
+            const currentIp = await resolveIp(device.host);
+
             // State transition logic
             if (!wasOffline && isOffline) {
-                // Went offline
+                // Went offline - record IP at time of going offline
                 await prisma.deviceLog.create({
                     data: {
                         deviceId: device.id,
                         event: 'OFFLINE',
-                        message: `เชื่อมต่อไม่ได้ (IP: ${device.host}, Port: ${device.ports})`
+                        ip: currentIp,
+                        message: `ขาดการเชื่อมต่อ (IP ออฟไลน์: ${currentIp}, Port: ${device.ports})`
                     }
                 });
                 if (lineToken) {
-                    await sendLineNotify(lineToken, `\n🔴 [แจ้งเตือน] อุปกรณ์ขาดการเชื่อมต่อ\nชื่อ: ${device.name}\nIP: ${device.host}\nพอร์ต: ${device.ports}`);
+                    await sendLineNotify(lineToken, `\n🔴 [แจ้งเตือน] อุปกรณ์ขาดการเชื่อมต่อ\nชื่อ: ${device.name}\nIP (ออฟไลน์): ${currentIp}\nพอร์ต: ${device.ports}`);
                 }
             } else if (wasOffline && !isOffline) {
-                // Came back online
+                // Came back online - record NEW IP at time of coming online
+                const lastOfflineLog = await prisma.deviceLog.findFirst({
+                    where: { deviceId: device.id, event: 'OFFLINE' },
+                    orderBy: { createdAt: 'desc' }
+                });
+                const prevIp = lastOfflineLog?.ip || device.host;
+                const isNewIp = prevIp !== currentIp && prevIp !== '-';
+
+                const onlineMsg = isNewIp
+                    ? `กลับมาออนไลน์ด้วย IP ใหม่: ${currentIp} (เดิม: ${prevIp})`
+                    : `กลับมาออนไลน์ (IP: ${currentIp})`;
+
                 await prisma.deviceLog.create({
                     data: {
                         deviceId: device.id,
                         event: 'ONLINE',
-                        message: `กลับมาเชื่อมต่อได้แล้ว (IP: ${device.host})`
+                        ip: currentIp,
+                        message: onlineMsg
                     }
                 });
+
                 if (lineToken) {
-                    await sendLineNotify(lineToken, `\n🟢 [กลับมาปกติ] อุปกรณ์เชื่อมต่อได้แล้ว\nชื่อ: ${device.name}\nIP: ${device.host}`);
+                    const notifyIpStr = isNewIp ? `IP ใหม่: ${currentIp} (เดิม: ${prevIp})` : `IP: ${currentIp}`;
+                    await sendLineNotify(lineToken, `\n🟢 [กลับมาปกติ] อุปกรณ์เชื่อมต่อได้แล้ว\nชื่อ: ${device.name}\n${notifyIpStr}`);
                 }
             }
         });
