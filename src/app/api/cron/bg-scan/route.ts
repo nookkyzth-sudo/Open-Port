@@ -129,7 +129,7 @@ export async function GET(req: NextRequest) {
                     data: {
                         deviceId: device.id,
                         event: 'OFFLINE',
-                        message: `เชื่อมต่อไม่ได้ (Port: ${device.ports})`
+                        message: `เชื่อมต่อไม่ได้ (IP: ${device.host}, Port: ${device.ports})`
                     }
                 });
                 if (lineToken) {
@@ -141,7 +141,7 @@ export async function GET(req: NextRequest) {
                     data: {
                         deviceId: device.id,
                         event: 'ONLINE',
-                        message: `กลับมาเชื่อมต่อได้แล้ว`
+                        message: `กลับมาเชื่อมต่อได้แล้ว (IP: ${device.host})`
                     }
                 });
                 if (lineToken) {

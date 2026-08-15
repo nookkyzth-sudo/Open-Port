@@ -131,11 +131,26 @@ export async function saveAppData(data: any) {
             for (let idx = 0; idx < p.devices.length; idx++) {
               const d = p.devices[idx]
               if (d.id) {
-                const devExists = existingDevices.some(ed => ed.id === d.id)
+                const devExists = existingDevices.find(ed => ed.id === d.id)
                 if (devExists) {
+                  if (devExists.host && d.host && devExists.host !== d.host) {
+                    await tx.deviceLog.create({
+                      data: {
+                        deviceId: d.id,
+                        event: 'IP_CHANGED',
+                        message: `เปลี่ยน IP จาก ${devExists.host} ➔ ${d.host}`
+                      }
+                    })
+                  }
                   await tx.device.update({
                     where: { id: d.id },
-                    data: { name: d.name, host: d.host, ports: d.ports, order: idx }
+                    data: { 
+                      name: d.name, 
+                      host: d.host, 
+                      ports: d.ports, 
+                      order: idx, 
+                      ipUpdatedAt: (devExists.host !== d.host) ? new Date() : devExists.ipUpdatedAt 
+                    }
                   })
                 } else {
                   await tx.device.create({
@@ -204,7 +219,7 @@ export async function saveLineNotifyToken(token: string) {
   return { success: true }
 }
 
-export async function getDeviceLogs() {
+export async function getDeviceLogs(timeframe: string = '100') {
   const currentUser = await getCurrentUser()
   let pageFilter: any = {}
   if (currentUser?.username === 'test.cctv') {
@@ -213,13 +228,26 @@ export async function getDeviceLogs() {
     pageFilter = { OR: [{ userId: null }, { user: { username: { not: 'test.cctv' } } }] }
   }
 
+  let whereClause: any = { device: { page: pageFilter } }
+  let takeLimit: number | undefined = undefined
+
+  if (timeframe === '7d') {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    whereClause.createdAt = { gte: sevenDaysAgo }
+  } else if (timeframe === '30d') {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    whereClause.createdAt = { gte: thirtyDaysAgo }
+  } else if (timeframe === '100') {
+    takeLimit = 100
+  }
+
   const logs = await prisma.deviceLog.findMany({
-    where: { device: { page: pageFilter } },
+    where: whereClause,
     include: {
       device: { select: { name: true, host: true, page: { select: { name: true, user: { select: { username: true } } } } } }
     },
     orderBy: { createdAt: 'desc' },
-    take: 100 // show last 100 logs
+    ...(takeLimit ? { take: takeLimit } : {})
   })
   return logs
 }

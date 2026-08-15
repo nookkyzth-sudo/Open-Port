@@ -50,7 +50,7 @@ function formatDuration(ms: number) {
 }
 
 function UptimeBar({ pct, isOffline }: { pct: number; isOffline: boolean }) {
-  const color = isOffline ? '#f43f5e' : pct >= 99 ? '#10b981' : pct >= 95 ? '#f59e0b' : '#f43f5e'
+  const color = isOffline ? '#f1183cff' : pct >= 99 ? '#10b981' : pct >= 95 ? '#f59e0b' : '#f43f5e'
   return (
     <div className="flex items-center gap-2 w-full">
       <div className="flex-1 bg-slate-700/50 rounded-full h-2 overflow-hidden">
@@ -89,7 +89,7 @@ export default function DashboardPage() {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState<'uptime' | 'offline' | 'latency'>('uptime')
   const [exportingPDF, setExportingPDF] = useState(false)
-  
+
   const dashboardRef = useRef<HTMLDivElement>(null)
 
   const loadData = async () => {
@@ -138,7 +138,7 @@ export default function DashboardPage() {
       d.offlineCount,
       formatDuration(d.downtimeMs)
     ])
-    
+
     const csvContent = bom + [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
@@ -154,18 +154,18 @@ export default function DashboardPage() {
     if (!dashboardRef.current) return
     setExportingPDF(true)
     try {
-      const dataUrl = await htmlToImage.toJpeg(dashboardRef.current, { 
+      const dataUrl = await htmlToImage.toJpeg(dashboardRef.current, {
         quality: 0.95,
         backgroundColor: document.documentElement.classList.contains('dark') ? '#020617' : '#f8fafc',
         pixelRatio: 2
       })
-      
+
       const pdf = new jsPDF('p', 'mm', 'a4')
       const imgProps = pdf.getImageProperties(dataUrl)
-      
+
       const pdfWidth = pdf.internal.pageSize.getWidth()
       const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width
-      
+
       pdf.addImage(dataUrl, 'JPEG', 0, 0, pdfWidth, pdfHeight)
       pdf.save(`openport_dashboard_${new Date().toISOString().split('T')[0]}.pdf`)
     } catch (err) {
