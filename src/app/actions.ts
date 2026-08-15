@@ -297,6 +297,7 @@ export async function getDashboardData() {
     let downtimeMs = 0
     let lastOfflineAt: Date | null = null
     let offlineCount = 0
+    let ipChangeCount = 0
 
     for (const log of logs) {
       if (log.event === 'OFFLINE') {
@@ -305,6 +306,8 @@ export async function getDashboardData() {
       } else if (log.event === 'ONLINE' && lastOfflineAt) {
         downtimeMs += new Date(log.createdAt).getTime() - lastOfflineAt.getTime()
         lastOfflineAt = null
+      } else if (log.event === 'IP_CHANGED') {
+        ipChangeCount++
       }
     }
 
@@ -335,6 +338,7 @@ export async function getDashboardData() {
       uptimePct: Math.round(uptimePct * 10) / 10,
       downtimeMs,
       offlineCount,
+      ipChangeCount,
       avgLatency,
       latencyHistory: latHistory.map(h => ({
         time: h.createdAt,
@@ -351,7 +355,9 @@ export async function getDashboardData() {
     ? Math.round((deviceStats.reduce((a, d) => a + d.uptimePct, 0) / totalDevices) * 10) / 10
     : 0
   const totalDowntimeMs = deviceStats.reduce((a, d) => a + d.downtimeMs, 0)
+  const totalIpChanges = deviceStats.reduce((a, d) => a + d.ipChangeCount, 0)
   const mostOfflineDevice = [...deviceStats].sort((a, b) => b.offlineCount - a.offlineCount)[0] ?? null
+  const mostIpChangedDevice = [...deviceStats].sort((a, b) => b.ipChangeCount - a.ipChangeCount)[0] ?? null
 
   const allValidLats = deviceStats.flatMap(d => d.latencyHistory.map(h => h.port1Lat ?? h.port2Lat).filter((v): v is number => v !== null))
   const globalAvgLatency = allValidLats.length > 0
@@ -366,8 +372,10 @@ export async function getDashboardData() {
       offlineDevices: totalDevices - onlineDevices,
       avgUptimePct,
       totalDowntimeMs,
+      totalIpChanges,
       globalAvgLatency,
       mostOfflineDevice: mostOfflineDevice ? { name: mostOfflineDevice.name, count: mostOfflineDevice.offlineCount } : null,
+      mostIpChangedDevice: mostIpChangedDevice && mostIpChangedDevice.ipChangeCount > 0 ? { name: mostIpChangedDevice.name, count: mostIpChangedDevice.ipChangeCount } : null,
     }
   }
 }

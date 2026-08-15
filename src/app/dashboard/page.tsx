@@ -27,6 +27,7 @@ type DeviceStat = {
   uptimePct: number
   downtimeMs: number
   offlineCount: number
+  ipChangeCount: number
   avgLatency: number | null
   latencyHistory: { time: Date; port1Lat: number | null; port2Lat: number | null }[]
 }
@@ -37,8 +38,10 @@ type Summary = {
   offlineDevices: number
   avgUptimePct: number
   totalDowntimeMs: number
+  totalIpChanges?: number
   globalAvgLatency: number | null
   mostOfflineDevice: { name: string; count: number } | null
+  mostIpChangedDevice?: { name: string; count: number } | null
 }
 
 function formatDuration(ms: number) {
@@ -87,7 +90,7 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState<Summary | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
-  const [sortBy, setSortBy] = useState<'uptime' | 'offline' | 'latency'>('uptime')
+  const [sortBy, setSortBy] = useState<'uptime' | 'offline' | 'latency' | 'ipChange'>('uptime')
   const [exportingPDF, setExportingPDF] = useState(false)
 
   const dashboardRef = useRef<HTMLDivElement>(null)
@@ -121,6 +124,7 @@ export default function DashboardPage() {
   const sortedDevices = [...deviceStats].sort((a, b) => {
     if (sortBy === 'uptime') return a.uptimePct - b.uptimePct
     if (sortBy === 'offline') return b.offlineCount - a.offlineCount
+    if (sortBy === 'ipChange') return (b.ipChangeCount || 0) - (a.ipChangeCount || 0)
     if (sortBy === 'latency') return (b.avgLatency ?? 0) - (a.avgLatency ?? 0)
     return 0
   })
@@ -128,7 +132,7 @@ export default function DashboardPage() {
   const exportCSV = () => {
     // Add BOM for Excel UTF-8 support
     const bom = '\uFEFF'
-    const headers = ['ชื่ออุปกรณ์', 'Host', 'เจ้าของ', 'Uptime (%)', 'Avg Latency (ms)', 'จำนวน Offline', 'Downtime']
+    const headers = ['ชื่ออุปกรณ์', 'Host', 'เจ้าของ', 'Uptime (%)', 'Avg Latency (ms)', 'จำนวน Offline', 'จำนวนเปลี่ยน IP', 'Downtime']
     const rows = sortedDevices.map(d => [
       `"${d.name || ''}"`,
       d.host,
@@ -136,6 +140,7 @@ export default function DashboardPage() {
       d.uptimePct.toFixed(1),
       d.avgLatency != null ? d.avgLatency : 'N/A',
       d.offlineCount,
+      d.ipChangeCount || 0,
       formatDuration(d.downtimeMs)
     ])
 
@@ -294,6 +299,7 @@ export default function DashboardPage() {
               >
                 <option value="uptime">เรียงตาม Uptime (น้อย→มาก)</option>
                 <option value="offline">เรียงตาม Offline บ่อย</option>
+                <option value="ipChange">เรียงตาม เปลี่ยน IP บ่อย</option>
                 <option value="latency">เรียงตาม Latency สูง</option>
               </select>
             </div>
@@ -311,6 +317,7 @@ export default function DashboardPage() {
                       <th className="px-4 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase">Uptime %</th>
                       <th className="px-4 py-2.5 text-center text-[10px] font-bold text-slate-500 uppercase">Latency</th>
                       <th className="px-4 py-2.5 text-center text-[10px] font-bold text-slate-500 uppercase">Offline</th>
+                      <th className="px-4 py-2.5 text-center text-[10px] font-bold text-slate-500 uppercase">เปลี่ยน IP</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -346,6 +353,11 @@ export default function DashboardPage() {
                         <td className="px-4 py-3 text-center">
                           <span className={`text-xs font-bold ${d.offlineCount > 0 ? 'text-rose-500 dark:text-rose-400' : 'text-slate-400 dark:text-slate-600'}`}>
                             {d.offlineCount > 0 ? `${d.offlineCount}x` : '—'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`text-xs font-bold ${d.ipChangeCount > 0 ? 'text-sky-500 dark:text-sky-400' : 'text-slate-400 dark:text-slate-600'}`}>
+                            {d.ipChangeCount > 0 ? `${d.ipChangeCount}x` : '—'}
                           </span>
                         </td>
                       </tr>

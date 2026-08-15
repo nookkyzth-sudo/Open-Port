@@ -98,6 +98,23 @@ export default function LogsPage() {
     URL.revokeObjectURL(url)
   }
 
+  const totalOfflineCount = logs.filter(l => l.event === 'OFFLINE').length
+  const totalOnlineCount = logs.filter(l => l.event === 'ONLINE').length
+  const totalIpChangeCount = logs.filter(l => l.event === 'IP_CHANGED').length
+
+  // Calculate counts per device name
+  const offlineCountsByName: Record<string, number> = {}
+  const ipChangeCountsByName: Record<string, number> = {}
+
+  logs.forEach(l => {
+    const devName = l.device.name || 'ไม่ระบุชื่อ'
+    if (l.event === 'OFFLINE') {
+      offlineCountsByName[devName] = (offlineCountsByName[devName] || 0) + 1
+    } else if (l.event === 'IP_CHANGED') {
+      ipChangeCountsByName[devName] = (ipChangeCountsByName[devName] || 0) + 1
+    }
+  })
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-sans">
       <div className="container mx-auto px-4 py-8 max-w-5xl">
@@ -162,6 +179,31 @@ export default function LogsPage() {
             </div>
           </div>
         </header>
+
+        {/* Summary Chips by Event & Name */}
+        <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-slate-400 uppercase">ออฟไลน์รวม</p>
+              <p className="text-xl font-extrabold text-rose-600 dark:text-rose-400 mt-0.5">{totalOfflineCount} ครั้ง</p>
+            </div>
+            <span className="w-3 h-3 rounded-full bg-rose-500 animate-pulse"></span>
+          </div>
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-slate-400 uppercase">ออนไลน์รวม</p>
+              <p className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5">{totalOnlineCount} ครั้ง</p>
+            </div>
+            <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
+          </div>
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-slate-400 uppercase">เปลี่ยน IP อัตโนมัติรวม</p>
+              <p className="text-xl font-extrabold text-sky-600 dark:text-sky-400 mt-0.5">{totalIpChangeCount} ครั้ง</p>
+            </div>
+            <span className="w-3 h-3 rounded-full bg-sky-500"></span>
+          </div>
+        </div>
 
         <main className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
