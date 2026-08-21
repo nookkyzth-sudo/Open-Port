@@ -11,7 +11,7 @@ type DeviceLog = {
   ip?: string | null
   message: string | null
   createdAt: Date
-  device: { name: string; host: string; page: { name: string; user?: { username: string } | null } }
+  device: { name: string; host: string; responsible?: string | null; page: { name: string; user?: { username: string } | null } }
 }
 
 export default function LogsPage() {
@@ -57,9 +57,10 @@ export default function LogsPage() {
   const exportCSV = () => {
     if (logs.length === 0) return
     const bom = '\uFEFF'
-    const headers = ['#', 'เวลา (Timestamp)', 'ชื่ออุปกรณ์', 'IP ขณะเกิดเหตุการณ์', 'Host ปัจจุบัน', 'เหตุการณ์', 'รายละเอียด', 'ออฟไลน์ของอุปกรณ์นี้ (ครั้ง)', 'เปลี่ยน IP ของอุปกรณ์นี้ (ครั้ง)']
+    const headers = ['#', 'เวลา (Timestamp)', 'ชื่ออุปกรณ์', 'ผู้รับผิดชอบ', 'IP ขณะเกิดเหตุการณ์', 'Host ปัจจุบัน', 'เหตุการณ์', 'รายละเอียด', 'ออฟไลน์ของอุปกรณ์นี้ (ครั้ง)', 'เปลี่ยน IP ของอุปกรณ์นี้ (ครั้ง)']
     const rows = logs.map((log, index) => {
       const devName = log.device.name || 'ไม่ระบุชื่อ'
+      const responsible = log.device.responsible || '-'
       const timeStr = new Date(log.createdAt).toLocaleString('th-TH', { 
         day: '2-digit', month: '2-digit', year: 'numeric', 
         hour: '2-digit', minute: '2-digit', second: '2-digit' 
@@ -70,6 +71,7 @@ export default function LogsPage() {
         index + 1,
         `"${timeStr}"`,
         `"${devName.replace(/"/g, '""')}"`,
+        `"${responsible.replace(/"/g, '""')}"`,
         `"${recordedIp.replace(/"/g, '""')}"`,
         `"${(log.device.host || '-').replace(/"/g, '""')}"`,
         `"${eventLabel}"`,
@@ -100,6 +102,7 @@ export default function LogsPage() {
 
     logs.forEach((log, index) => {
       const devName = log.device.name || 'ไม่ระบุชื่อ'
+      const responsible = log.device.responsible || '-'
       const timeStr = new Date(log.createdAt).toLocaleString('th-TH', {
         day: '2-digit', month: '2-digit', year: 'numeric',
         hour: '2-digit', minute: '2-digit', second: '2-digit'
@@ -108,6 +111,7 @@ export default function LogsPage() {
       const recordedIp = log.ip || log.device.host || '-'
       content += `${index + 1}. เวลา: ${timeStr}\n`
       content += `   อุปกรณ์: ${devName} (Host: ${log.device.host})\n`
+      content += `   ผู้รับผิดชอบ: ${responsible}\n`
       content += `   IP บันทึกขณะเกิดเหตุการณ์: ${recordedIp}\n`
       content += `   สถานะ: ${eventLabel}\n`
       content += `   รายละเอียด: ${log.message || '-'}\n`
@@ -220,7 +224,7 @@ export default function LogsPage() {
             <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
               <thead className="bg-slate-50 dark:bg-slate-700/50">
                 <tr>
-                  {['เวลา (Timestamp)', 'อุปกรณ์ / Host', 'IP บันทึกขณะเกิดเหตุการณ์', 'เหตุการณ์', 'รายละเอียด', 'สถิติตามชื่ออุปกรณ์'].map(h => (
+                  {['เวลา (Timestamp)', 'อุปกรณ์ / Host', 'ผู้รับผิดชอบ', 'IP บันทึกขณะเกิดเหตุการณ์', 'เหตุการณ์', 'รายละเอียด', 'สถิติตามชื่ออุปกรณ์'].map(h => (
                     <th key={h} className="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">{h}</th>
                   ))}
                 </tr>
@@ -240,6 +244,11 @@ export default function LogsPage() {
                       <td className="px-6 py-4">
                         <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{devName}</p>
                         <p className="text-xs font-mono text-slate-500 dark:text-slate-400">{log.device.host}</p>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                          {log.device.responsible || <span className="text-slate-400 italic">-</span>}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {log.event === 'OFFLINE' ? (
@@ -289,7 +298,7 @@ export default function LogsPage() {
                 })}
                 {logs.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+                    <td colSpan={7} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
                       {loading ? 'กำลังโหลดข้อมูล...' : 'ยังไม่มีประวัติการแจ้งเตือนในช่วงเวลานี้'}
                     </td>
                   </tr>

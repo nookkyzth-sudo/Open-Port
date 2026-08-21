@@ -246,7 +246,7 @@ export async function getDeviceLogs(timeframe: string = '100') {
   const logs = await prisma.deviceLog.findMany({
     where: whereClause,
     include: {
-      device: { select: { name: true, host: true, page: { select: { name: true, user: { select: { username: true } } } } } }
+      device: { select: { name: true, host: true, responsible: true, page: { select: { name: true, user: { select: { username: true } } } } } }
     },
     orderBy: { createdAt: 'desc' },
     ...(takeLimit ? { take: takeLimit } : {})
