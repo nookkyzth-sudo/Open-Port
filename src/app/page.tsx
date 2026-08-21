@@ -181,7 +181,7 @@ export default function Home() {
       const port1 = ports[0] || '-'
       const port2 = ports[1] || '-'
       content += `${dev.name || 'Unknown'}\n`
-      content += `${dev.host || 'Unknown'}\tPort1: ${port1} Port2: ${port2}\n`
+      content += `${dev.host || 'Unknown'}\tPort1: ${port1} Port2: ${port2}${dev.responsible ? `\t(ผู้รับผิดชอบ: ${dev.responsible})` : ''}\n`
       if (index < validDevices.length - 1) content += '\n'
     })
 
