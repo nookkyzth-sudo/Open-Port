@@ -9,7 +9,7 @@ import Link from 'next/link'
 type Device = { id?: string, name: string, host: string, ports: string, responsible?: string | null, ipUpdatedAt?: string | Date | null, isOffline?: boolean }
 type Page = { id: string, name: string, userId?: string | null, user?: { username: string } | null, devices: Device[] }
 type Config = { activePageId: string | null, scanInterval: string | null }
-type ScanResult = { id: number, name: string, host: string, results: { port: number, status: string, latency?: number | null }[] }
+type ScanResult = { id: number, name: string, host: string, responsible?: string | null, results: { port: number, status: string, latency?: number | null }[] }
 
 export default function Home() {
   const [pages, setPages] = useState<Page[]>([])
@@ -288,7 +288,7 @@ export default function Home() {
       if (ports.length === 0 || ports.length > 2) {
         return setAlert({ type: 'error', message: `แถวที่ ${i + 1} พอร์ตไม่ถูกต้อง (1-2 พอร์ตเท่านั้น)` })
       }
-      targetsToScan.push({ name: dev.name, host: dev.host, ports })
+      targetsToScan.push({ name: dev.name, host: dev.host, ports, responsible: dev.responsible || null })
     }
 
     setAlert(null)
@@ -670,6 +670,7 @@ export default function Home() {
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">ชื่อระบบ / อุปกรณ์</th>
                         <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">IP Address</th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">ผู้รับผิดชอบ</th>
                         <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Port 1 (สถานะ)</th>
                         <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Port 2 (สถานะ)</th>
                       </tr>
@@ -679,6 +680,7 @@ export default function Home() {
                         <tr key={result.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
                           <td className="px-6 py-4 font-medium text-slate-900 dark:text-slate-100">{result.name}</td>
                           <td className="px-6 py-4 text-slate-500 dark:text-slate-400 font-mono text-xs">{result.host}</td>
+                          <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{result.responsible || <span className="text-slate-400 italic text-xs">-</span>}</td>
                           {Array.from({ length: 2 }).map((_, i) => {
                             const res = result.results[i]
                             if (!res) return <td key={i} className="px-6 py-4 text-center text-slate-400">-</td>

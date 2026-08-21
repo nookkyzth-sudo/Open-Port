@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
                     id: idx,
                     name: target.name,
                     host: target.host,
+                    responsible: target.responsible || null,
                     results: portResults
                 };
 
