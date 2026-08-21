@@ -148,19 +148,20 @@ export async function saveAppData(data: any) {
                     data: { 
                       name: d.name, 
                       host: d.host, 
-                      ports: d.ports, 
+                      ports: d.ports,
+                      responsible: d.responsible ?? null,
                       order: idx, 
                       ipUpdatedAt: (devExists.host !== d.host) ? new Date() : devExists.ipUpdatedAt 
                     }
                   })
                 } else {
                   await tx.device.create({
-                    data: { name: d.name, host: d.host, ports: d.ports, order: idx, pageId: p.id, ipUpdatedAt: new Date() }
+                    data: { name: d.name, host: d.host, ports: d.ports, responsible: d.responsible ?? null, order: idx, pageId: p.id, ipUpdatedAt: new Date() }
                   })
                 }
               } else {
                 await tx.device.create({
-                  data: { name: d.name, host: d.host, ports: d.ports, order: idx, pageId: p.id, ipUpdatedAt: new Date() }
+                  data: { name: d.name, host: d.host, ports: d.ports, responsible: d.responsible ?? null, order: idx, pageId: p.id, ipUpdatedAt: new Date() }
                 })
               }
             }

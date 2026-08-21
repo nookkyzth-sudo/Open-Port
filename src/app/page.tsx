@@ -6,7 +6,7 @@ import { getAppData, saveAppData, getBackgroundScanData } from './actions'
 import { getCurrentUser, logout } from './auth-actions'
 import Link from 'next/link'
 
-type Device = { id?: string, name: string, host: string, ports: string, ipUpdatedAt?: string | Date | null, isOffline?: boolean }
+type Device = { id?: string, name: string, host: string, ports: string, responsible?: string, ipUpdatedAt?: string | Date | null, isOffline?: boolean }
 type Page = { id: string, name: string, userId?: string | null, user?: { username: string } | null, devices: Device[] }
 type Config = { activePageId: string | null, scanInterval: string | null }
 type ScanResult = { id: number, name: string, host: string, results: { port: number, status: string, latency?: number | null }[] }
@@ -114,7 +114,7 @@ export default function Home() {
 
   const handleSave = async () => {
     try {
-      const isSuperAdmin = currentUser?.username === 'nook.cctv'
+      const isSuperAdmin = currentUser?.role === 'ADMIN'
       const pagesToSave = pages.filter(p => isSuperAdmin ? true : (p.userId === currentUser?.userId || !p.userId))
       const result = await saveAppData({ pages: pagesToSave, config: { ...config, activePageId } })
       if (result?.error) {
@@ -145,7 +145,7 @@ export default function Home() {
   const addDevice = (pageId: string) => {
     setPages(pages.map(p => {
       if (p.id === pageId) {
-        return { ...p, devices: [...p.devices, { name: '', host: '', ports: '' }] }
+        return { ...p, devices: [...p.devices, { name: '', host: '', ports: '', responsible: '' }] }
       }
       return p
     }))
@@ -155,7 +155,7 @@ export default function Home() {
     setPages(prev => prev.map(p => {
       if (p.id !== activePageId) return p
       const newDevices = p.devices.filter((_, i) => i !== devIndex)
-      if (newDevices.length === 0) newDevices.push({ name: '', host: '', ports: '' })
+      if (newDevices.length === 0) newDevices.push({ name: '', host: '', ports: '', responsible: '' })
       return { ...p, devices: newDevices }
     }))
   }
@@ -464,11 +464,12 @@ export default function Home() {
                 <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
                   <thead className="bg-slate-50 dark:bg-slate-700/50">
                     <tr>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase w-1/12">#</th>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase w-3/12">ชื่อระบบ / อุปกรณ์</th>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase w-4/12">IP Address / Domain (Public)</th>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase w-3/12">พอร์ต (สูงสุด 2)</th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase w-1/12">จัดการ</th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase w-[5%]">#</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase w-[22%]">ชื่อระบบ / อุปกรณ์</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase w-[28%]">IP Address / Domain (Public)</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase w-[20%]">พอร์ต (สูงสุด 2)</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase w-[18%]">ผู้รับผิดชอบ</th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-400 uppercase w-[7%]">จัดการ</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
@@ -508,6 +509,9 @@ export default function Home() {
                         </td>
                         <td className="px-4 py-3">
                           <input type="text" value={d.ports} onChange={(e) => handleDeviceChange(activePage.id, i, 'ports', e.target.value)} disabled={!canEditActivePage} className="w-full px-3 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 font-mono text-slate-900 dark:text-slate-100 placeholder-slate-500 bg-white dark:bg-slate-700 disabled:bg-slate-100 dark:disabled:bg-slate-600 disabled:text-slate-500 dark:disabled:text-slate-400" placeholder="80,443" />
+                        </td>
+                        <td className="px-4 py-3">
+                          <input type="text" value={d.responsible || ''} onChange={(e) => handleDeviceChange(activePage.id, i, 'responsible', e.target.value)} disabled={!canEditActivePage} className="w-full px-3 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-slate-100 placeholder-slate-500 bg-white dark:bg-slate-700 disabled:bg-slate-100 dark:disabled:bg-slate-600 disabled:text-slate-500 dark:disabled:text-slate-400" placeholder="ชื่อผู้รับผิดชอบ" />
                         </td>
                         <td className="px-4 py-3 text-center">
                           {canEditActivePage ? (
@@ -552,6 +556,12 @@ export default function Home() {
                         <input type="text" value={d.ports} onChange={(e) => handleDeviceChange(activePage!.id, i, 'ports', e.target.value)} disabled={!canEditActivePage}
                           className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-mono bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 disabled:opacity-60"
                           placeholder="80,443" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1 block">ผู้รับผิดชอบ</label>
+                        <input type="text" value={d.responsible || ''} onChange={(e) => handleDeviceChange(activePage!.id, i, 'responsible', e.target.value)} disabled={!canEditActivePage}
+                          className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 disabled:opacity-60"
+                          placeholder="ชื่อผู้รับผิดชอบ" />
                       </div>
                     </div>
                   </div>

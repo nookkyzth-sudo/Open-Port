@@ -28,6 +28,7 @@ model Device {
   name            String
   host            String
   ports           String
+  responsible     String?
   order           Int      @default(0)
   ipUpdatedAt     DateTime?
   
