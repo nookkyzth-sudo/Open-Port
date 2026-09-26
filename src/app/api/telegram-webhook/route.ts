@@ -68,13 +68,17 @@ export async function POST(req: NextRequest) {
             }
 
             await sendTelegramMessage(botToken, chatId, reply);
-        } else if (text === '/list' || text === '/list@openport_cctv_bot') {
+        } else if (text.startsWith('/list') || text.startsWith('/search')) {
             const config = await prisma.config.findUnique({ where: { id: 'app-data' } });
             const botToken = config?.telegramBotToken;
 
             if (!botToken) {
                 return NextResponse.json({ success: true, error: 'Bot token not configured' });
             }
+
+            // Extract keyword
+            const parts = text.split(' ');
+            const keyword = parts.length > 1 ? parts.slice(1).join(' ').trim().toLowerCase() : '';
 
             // Fetch devices
             const devices = await prisma.device.findMany({
@@ -85,16 +89,23 @@ export async function POST(req: NextRequest) {
                 orderBy: { pageId: 'asc' }
             });
 
-            if (devices.length === 0) {
-                await sendTelegramMessage(botToken, chatId, '📭 ยังไม่มีข้อมูลอุปกรณ์ในระบบ');
+            // Filter devices if keyword is provided
+            const filteredDevices = keyword
+                ? devices.filter(d => (d.name || '').toLowerCase().includes(keyword) || (d.host || '').toLowerCase().includes(keyword))
+                : devices;
+
+            if (filteredDevices.length === 0) {
+                await sendTelegramMessage(botToken, chatId, `📭 ไม่พบข้อมูลอุปกรณ์ที่ตรงกับ "<b>${keyword}</b>"`);
                 return NextResponse.json({ success: true });
             }
 
-            let reply = `📋 <b>รายชื่ออุปกรณ์ทั้งหมด (${devices.length})</b>\n\n`;
+            let reply = keyword
+                ? `🔍 <b>ผลการค้นหา "${keyword}" (${filteredDevices.length} อุปกรณ์)</b>\n\n`
+                : `📋 <b>รายชื่ออุปกรณ์ทั้งหมด (${filteredDevices.length})</b>\n\n`;
             
             // Chunk messages to avoid Telegram 4096 char limit
-            for (let i = 0; i < devices.length; i++) {
-                const d = devices[i];
+            for (let i = 0; i < filteredDevices.length; i++) {
+                const d = filteredDevices[i];
                 const statusIcon = d.isOffline ? '🔴' : '🟢';
                 const line = `${statusIcon} ${i + 1}. <b>${d.name || 'ไม่ระบุ'}</b>\n   IP: <code>${d.host}</code>\n   Port: ${d.ports}\n\n`;
                 
