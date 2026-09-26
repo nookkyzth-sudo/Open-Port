@@ -11,6 +11,8 @@ model Config {
   activePageId     String?
   scanInterval     String?
   lineNotifyToken  String?
+  telegramBotToken String?
+  telegramChatId   String?
   updatedAt        DateTime @updatedAt
 }
 

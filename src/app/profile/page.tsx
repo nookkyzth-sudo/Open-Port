@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { changePassword, logout, getCurrentUser } from '@/app/auth-actions'
 import { ShieldAlert, KeyRound, AlertCircle, CheckCircle, ArrowLeft, LogOut, MessageSquare } from 'lucide-react'
 import Link from 'next/link'
-import { getLineNotifyToken, saveLineNotifyToken } from '@/app/actions'
+import { getLineNotifyToken, saveLineNotifyToken, getTelegramSettings, saveTelegramSettings } from '@/app/actions'
 import { useEffect } from 'react'
 
 export default function ProfilePage() {
@@ -15,14 +15,25 @@ export default function ProfilePage() {
   const [lineToken, setLineToken] = useState('')
   const [lineLoading, setLineLoading] = useState(false)
   const [lineMessage, setLineMessage] = useState<{type: 'error'|'success', text: string} | null>(null)
+  
+  const [telegramBotToken, setTelegramBotToken] = useState('')
+  const [telegramChatId, setTelegramChatId] = useState('')
+  const [telegramLoading, setTelegramLoading] = useState(false)
+  const [telegramMessage, setTelegramMessage] = useState<{type: 'error'|'success', text: string} | null>(null)
 
   useEffect(() => {
     async function load() {
       const user = await getCurrentUser()
       setCurrentUser(user)
-      if (user?.username === 'nook.cctv') {
+      if (user?.username === 'nook.cctv' || user?.role === 'ADMIN') {
         const token = await getLineNotifyToken()
         if (token) setLineToken(token)
+        
+        const tgSettings = await getTelegramSettings()
+        if (tgSettings) {
+          setTelegramBotToken(tgSettings.telegramBotToken)
+          setTelegramChatId(tgSettings.telegramChatId)
+        }
       }
     }
     load()
@@ -123,7 +134,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {currentUser?.username === 'nook.cctv' && (
+      {(currentUser?.username === 'nook.cctv' || currentUser?.role === 'ADMIN') && (
         <div className="max-w-md w-full bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden mt-6">
           <div className="p-6 bg-emerald-900 dark:bg-emerald-950 text-white flex items-center gap-2">
             <MessageSquare className="w-6 h-6 text-emerald-400" />
@@ -167,6 +178,67 @@ export default function ProfilePage() {
                 className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-lg transition flex items-center justify-center gap-2 mt-6"
               >
                 {lineLoading ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่า LINE'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {(currentUser?.username === 'nook.cctv' || currentUser?.role === 'ADMIN') && (
+        <div className="max-w-md w-full bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden mt-6">
+          <div className="p-6 bg-blue-900 dark:bg-blue-950 text-white flex items-center gap-2">
+            <MessageSquare className="w-6 h-6 text-blue-400" />
+            <h2 className="text-xl font-bold">ตั้งค่าการแจ้งเตือน (Telegram)</h2>
+          </div>
+          
+          <div className="p-8">
+            {telegramMessage && (
+              <div className={`mb-6 p-3 text-sm rounded-lg flex items-center gap-2 border ${telegramMessage.type === 'error' ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-100 dark:border-red-800' : 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800'}`}>
+                {telegramMessage.type === 'error' ? <AlertCircle className="w-5 h-5 shrink-0" /> : <CheckCircle className="w-5 h-5 shrink-0" />}
+                {telegramMessage.text}
+              </div>
+            )}
+            
+            <form onSubmit={async (e) => {
+              e.preventDefault()
+              setTelegramLoading(true)
+              setTelegramMessage(null)
+              try {
+                await saveTelegramSettings(telegramBotToken, telegramChatId)
+                setTelegramMessage({ type: 'success', text: 'บันทึกข้อมูล Telegram สำเร็จแล้ว' })
+              } catch (err: any) {
+                setTelegramMessage({ type: 'error', text: err.message })
+              }
+              setTelegramLoading(false)
+            }} className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Telegram Bot Token</label>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">รับได้จาก <a href="https://t.me/BotFather" target="_blank" rel="noreferrer" className="text-indigo-600 dark:text-indigo-400 underline">@BotFather</a></p>
+                <input
+                  type="text"
+                  value={telegramBotToken}
+                  onChange={(e) => setTelegramBotToken(e.target.value)}
+                  placeholder="เช่น 123456789:ABCdefGHIjklMNO..."
+                  className="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition text-slate-900 dark:text-slate-100 placeholder-slate-400"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Telegram Chat ID</label>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">รับได้โดยคุยกับ <a href="https://t.me/userinfobot" target="_blank" rel="noreferrer" className="text-indigo-600 dark:text-indigo-400 underline">@userinfobot</a> หรือส่งให้ Group/Channel</p>
+                <input
+                  type="text"
+                  value={telegramChatId}
+                  onChange={(e) => setTelegramChatId(e.target.value)}
+                  placeholder="เช่น 12345678 หรือ -1001234567890"
+                  className="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition text-slate-900 dark:text-slate-100 placeholder-slate-400"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={telegramLoading}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition flex items-center justify-center gap-2 mt-6"
+              >
+                {telegramLoading ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่า Telegram'}
               </button>
             </form>
           </div>

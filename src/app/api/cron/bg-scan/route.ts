@@ -67,6 +67,28 @@ async function sendLineNotify(token: string, message: string) {
     }
 }
 
+async function sendTelegramNotify(botToken: string, chatId: string, message: string) {
+    if (!botToken || !chatId) return;
+    try {
+        const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                chat_id: chatId,
+                text: message,
+            })
+        });
+        if (!response.ok) {
+            console.error('Telegram Notify Error:', await response.text());
+        }
+    } catch (e) {
+        console.error('Failed to send Telegram Notify:', e);
+    }
+}
+
 export async function GET(req: NextRequest) {
     try {
         const [devices, config] = await Promise.all([
@@ -84,6 +106,8 @@ export async function GET(req: NextRequest) {
         }
 
         const lineToken = config?.lineNotifyToken;
+        const tgBotToken = config?.telegramBotToken;
+        const tgChatId = config?.telegramChatId;
 
         const scanPromises = devices.map(async (device) => {
             const portsStr = device.ports.split(',').map(p => parseInt(p.trim())).filter(p => !isNaN(p) && p > 0 && p <= 65535);
@@ -152,6 +176,9 @@ export async function GET(req: NextRequest) {
                 if (lineToken) {
                     await sendLineNotify(lineToken, `\n🔴 [แจ้งเตือน] อุปกรณ์ขาดการเชื่อมต่อ\nชื่อ: ${device.name}\nIP (ออฟไลน์): ${currentIp}\nพอร์ต: ${device.ports}`);
                 }
+                if (tgBotToken && tgChatId) {
+                    await sendTelegramNotify(tgBotToken, tgChatId, `🔴 [แจ้งเตือน] อุปกรณ์ขาดการเชื่อมต่อ\nชื่อ: ${device.name}\nIP (ออฟไลน์): ${currentIp}\nพอร์ต: ${device.ports}`);
+                }
             } else if (wasOffline && !isOffline) {
                 // Came back online - record NEW IP at time of coming online
                 const lastOfflineLog = await prisma.deviceLog.findFirst({
@@ -177,6 +204,10 @@ export async function GET(req: NextRequest) {
                 if (lineToken) {
                     const notifyIpStr = isNewIp ? `IP ใหม่: ${currentIp} (เดิม: ${prevIp})` : `IP: ${currentIp}`;
                     await sendLineNotify(lineToken, `\n🟢 [กลับมาปกติ] อุปกรณ์เชื่อมต่อได้แล้ว\nชื่อ: ${device.name}\n${notifyIpStr}`);
+                }
+                if (tgBotToken && tgChatId) {
+                    const notifyIpStr = isNewIp ? `IP ใหม่: ${currentIp} (เดิม: ${prevIp})` : `IP: ${currentIp}`;
+                    await sendTelegramNotify(tgBotToken, tgChatId, `🟢 [กลับมาปกติ] อุปกรณ์เชื่อมต่อได้แล้ว\nชื่อ: ${device.name}\n${notifyIpStr}`);
                 }
             }
         });

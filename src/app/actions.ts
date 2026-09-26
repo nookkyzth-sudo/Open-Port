@@ -221,6 +221,29 @@ export async function saveLineNotifyToken(token: string) {
   return { success: true }
 }
 
+export async function getTelegramSettings() {
+  const currentUser = await getCurrentUser()
+  if (currentUser?.role !== 'ADMIN') return null
+  
+  const config = await prisma.config.findUnique({ where: { id: 'app-data' } })
+  return {
+    telegramBotToken: config?.telegramBotToken || '',
+    telegramChatId: config?.telegramChatId || ''
+  }
+}
+
+export async function saveTelegramSettings(botToken: string, chatId: string) {
+  const currentUser = await getCurrentUser()
+  if (currentUser?.role !== 'ADMIN') throw new Error('Unauthorized')
+  
+  await prisma.config.upsert({
+    where: { id: 'app-data' },
+    update: { telegramBotToken: botToken, telegramChatId: chatId },
+    create: { id: 'app-data', telegramBotToken: botToken, telegramChatId: chatId }
+  })
+  return { success: true }
+}
+
 export async function getDeviceLogs(timeframe: string = '100') {
   const currentUser = await getCurrentUser()
   let pageFilter: any = {}
