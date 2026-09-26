@@ -68,6 +68,46 @@ export async function POST(req: NextRequest) {
             }
 
             await sendTelegramMessage(botToken, chatId, reply);
+        } else if (text === '/list' || text === '/list@openport_cctv_bot') {
+            const config = await prisma.config.findUnique({ where: { id: 'app-data' } });
+            const botToken = config?.telegramBotToken;
+
+            if (!botToken) {
+                return NextResponse.json({ success: true, error: 'Bot token not configured' });
+            }
+
+            // Fetch devices
+            const devices = await prisma.device.findMany({
+                where: {
+                    host: { not: '' },
+                    ports: { not: '' }
+                },
+                orderBy: { pageId: 'asc' }
+            });
+
+            if (devices.length === 0) {
+                await sendTelegramMessage(botToken, chatId, '📭 ยังไม่มีข้อมูลอุปกรณ์ในระบบ');
+                return NextResponse.json({ success: true });
+            }
+
+            let reply = `📋 <b>รายชื่ออุปกรณ์ทั้งหมด (${devices.length})</b>\n\n`;
+            
+            // Chunk messages to avoid Telegram 4096 char limit
+            for (let i = 0; i < devices.length; i++) {
+                const d = devices[i];
+                const statusIcon = d.isOffline ? '🔴' : '🟢';
+                const line = `${statusIcon} ${i + 1}. <b>${d.name || 'ไม่ระบุ'}</b>\n   IP: <code>${d.host}</code>\n   Port: ${d.ports}\n\n`;
+                
+                if (reply.length + line.length > 3500) {
+                    await sendTelegramMessage(botToken, chatId, reply);
+                    reply = '';
+                }
+                reply += line;
+            }
+
+            if (reply.trim().length > 0) {
+                await sendTelegramMessage(botToken, chatId, reply);
+            }
         }
 
         return NextResponse.json({ success: true });
